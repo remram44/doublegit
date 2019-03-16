@@ -12,7 +12,7 @@ with io.open('README.rst', encoding='utf-8') as fp:
     description = fp.read()
 req = []
 setup(name='doublegit',
-      version='0.1',
+      version='1.0',
       py_modules=['doublegit'],
       entry_points={
           'console_scripts': [

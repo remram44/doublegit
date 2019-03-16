@@ -8,6 +8,9 @@ import sqlite3
 import subprocess
 
 
+__version__ = '1.0'
+
+
 logger = logging.getLogger(__name__)
 
 
