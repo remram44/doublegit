@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import itertools
 import logging
 import os
@@ -32,6 +33,10 @@ def fetch(repository):
     if proc.wait() != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd)
 
+    return parse_fetch_output(err)
+
+
+def parse_fetch_output(err):
     new = []
     changed = []
     removed = []
@@ -94,7 +99,7 @@ def delete_branch(repository, ref):
     subprocess.check_call(cmd, cwd=repository)
 
 
-def update(repository):
+def update(repository, time=None):
     # Check Git repository (bare)
     if (not os.path.exists(os.path.join(repository, 'refs')) or
             not os.path.exists(os.path.join(repository, 'objects'))):
@@ -121,17 +126,20 @@ def update(repository):
     # Do fetch
     new, changed, removed = fetch(repository)
 
+    if time is None:
+        time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
     # Update database
     for ref in itertools.chain(removed, changed):
         remote, name = ref.split('/', 1)
         conn.execute(
             '''
-            UPDATE refs SET to_date=DATETIME()
+            UPDATE refs SET to_date=?
             WHERE remote=? AND name=?
             ORDER BY from_date DESC
             LIMIT 1;
             ''',
-            [remote, name],
+            [time, remote, name],
         )
     for ref in itertools.chain(changed, new):
         sha = get_sha(repository, ref)
@@ -139,9 +147,9 @@ def update(repository):
         conn.execute(
             '''
             INSERT INTO refs(remote, name, from_date, to_date, sha)
-            VALUES(?, ?, DATETIME(), NULL, ?);
+            VALUES(?, ?, ?, NULL, ?);
             ''',
-            [remote, name, sha],
+            [remote, name, time, sha],
         )
 
     # Create refs to prevent garbage collection
