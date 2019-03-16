@@ -98,11 +98,11 @@ def update(repository):
         conn.execute(
             '''
             CREATE TABLE refs(
-                remote TEXT,
-                name TEXT,
-                from_date DATETIME,
-                to_date DATETIME,
-                sha TEXT
+                remote TEXT NOT NULL,
+                name TEXT NOT NULL,
+                from_date DATETIME NOT NULL,
+                to_date DATETIME NULL,
+                sha TEXT NOT NULL
             );
             ''',
         )
