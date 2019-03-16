@@ -9,3 +9,9 @@ run_tests_py36:
     - python -m readme_renderer README.rst >/dev/null
     - python tests.py
     - flake8 --ignore=E731,W504 tests.py doublegit.py
+
+run_tests_py27:
+  stage: test
+  image: python:2.7
+  script:
+    - python tests.py
