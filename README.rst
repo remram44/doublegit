@@ -1,7 +1,7 @@
 What is this?
 =============
 
-This is a small tool that does `git fetch` then writes down all ref updates in a SQLite3 database. It also creates refs to make sure no commit gets garbage collected.
+This is a small tool that does ``git fetch`` then writes down all ref updates in a SQLite3 database. It also creates refs to make sure no commit gets garbage collected.
 
 What for?
 =========
@@ -20,20 +20,20 @@ It is also local, so you wouldn't be able to read the reflog of a remote reposit
 How to use
 ==========
 
-First, create a bare repo:
+First, create a bare repo::
 
     $ mkdir my-repo-backup && cd my-repo-backup
     $ git init --bare
 
-Set up one (or multiple) remotes to fetch from:
+Set up one (or multiple) remotes to fetch from::
 
-    $ git remote add origin https://github.com/remram44/gitarchive.git
+    $ git remote add origin https://github.com/remram44/doublegit.git
 
-Then simply run gitarchive once in a while:
+Then simply run doublegit once in a while::
 
-    $ python3 gitarchive.py /path/to/my-repo-backup
+    $ python3 doublegit.py /path/to/my-repo-backup
 
-You can then query `gitarchive.sqlite3` for branch updates or for the position of the branches at a given point in time.
+You can then query ``gitarchive.sqlite3`` for branch updates or for the position of the branches at a given point in time.
 
 Next steps?
 ===========
