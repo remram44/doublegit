@@ -15,7 +15,7 @@ _re_fetch = re.compile(r' ([+t*! -]) +([^ ]+|\[[^\]]+\]) +'
 
 
 class Operation(object):
-    FAST_FORMWARD = ' '
+    FAST_FORWARD = ' '
     FORCED = '+'
     PRUNED = '-'
     TAG = 't'
@@ -45,7 +45,7 @@ def fetch(repository):
 
             if op == Operation.NEW:
                 new.append(to)
-            elif op in (Operation.FAST_FORMWARD, Operation.FORCED):
+            elif op in (Operation.FAST_FORWARD, Operation.FORCED):
                 changed.append(to)
             elif op == Operation.PRUNED:
                 removed.append(to)
