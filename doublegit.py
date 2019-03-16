@@ -80,6 +80,15 @@ def included_branches(repository, target):
     return refs
 
 
+def including_branches(repository, target):
+    cmd = ['git', 'branch', '--contains', target]
+    out = subprocess.check_output(cmd, cwd=repository)
+    refs = []
+    for line in out.splitlines():
+        refs.append(line.decode('utf-8').strip())
+    return refs
+
+
 def delete_branch(repository, ref):
     cmd = ['git', 'branch', '-D', ref]
     subprocess.check_call(cmd, cwd=repository)
@@ -147,6 +156,8 @@ def update(repository):
         for br in included_branches(repository, sha):
             if br != keeper:
                 delete_branch(repository, br)
+        if len(including_branches(repository, sha)) > 1:
+            delete_branch(repository, 'keep-%s' % sha)
 
     conn.commit()
 
