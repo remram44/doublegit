@@ -49,7 +49,7 @@ From github.com:remram44/doublegit
                 check_call(['git', 'add', 'f'], cwd=origin)
 
             def commit(n, msg):
-                time = self.time(n).strftime('%Y-%m-%d %H:%M:%S')
+                time = self.time(n).strftime('%Y-%m-%d %H:%M:%S -0400')
                 check_call(
                     ['git', 'commit', '--date=%s' % time, '-m', msg],
                     cwd=origin,
