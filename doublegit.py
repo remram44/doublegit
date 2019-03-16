@@ -52,6 +52,8 @@ def parse_fetch_output(err):
             op, summary, from_, to, reason = m.groups()
 
             if op == Operation.NEW:
+                if '/' not in to:  # tag
+                    continue
                 new.append(to)
             elif op in (Operation.FAST_FORWARD, Operation.FORCED):
                 changed.append(to)
