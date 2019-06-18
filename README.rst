@@ -8,7 +8,7 @@ What for?
 
 If the remote repository gets force-pushed to, some commits might get lost. There will also be no evidence in the Git log that such destructive changes happened. It is also possible for a commit to be created but pushed much later, or branches can get renamed; none of this appears in the Git log either.
 
-This tool will allow you to get a clear picture of what happened, never lose a commit, and quickly get a snapshot of a repository at a specific point in time. It is therefore more suitable for backups that a mirror.
+This tool will allow you to get a clear picture of what happened, never lose a commit, and quickly get a snapshot of a repository at a specific point in time. It is therefore more suitable for backups than a mirror.
 
 Doesn't the reflog do all that?
 ===============================
