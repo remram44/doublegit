@@ -12,7 +12,7 @@ with io.open('README.rst', encoding='utf-8') as fp:
     description = fp.read()
 req = []
 setup(name='doublegit',
-      version='1.0',
+      version='1.1',
       py_modules=['doublegit'],
       entry_points={
           'console_scripts': [
@@ -34,12 +34,14 @@ setup(name='doublegit',
       license='MIT',
       keywords=['git', 'versioning', 'version control', 'backup'],
       classifiers=[
-          'Development Status :: 4 - Beta',
+          'Development Status :: 5 - Production/Stable',
           'Environment :: Console',
           'Intended Audience :: Developers',
           'Intended Audience :: System Administrators',
           'License :: OSI Approved :: MIT License',
           'Operating System :: OS Independent',
+          'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
           'Topic :: Software Development :: Version Control :: Git',
           'Topic :: System :: Archiving :: Backup',
           'Topic :: Utilities'])
