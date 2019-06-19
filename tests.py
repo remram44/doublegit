@@ -25,7 +25,7 @@ From github.com:remram44/doublegit
    673b728..466e90b  devel      -> origin/devel
  - [deleted]         (none)     -> origin/old
 '''
-        new, changed, removed = doublegit.parse_fetch_output(output)
+        new, changed, removed, tags = doublegit.parse_fetch_output(output)
         self.assertEqual(new, ['origin/master'])
         self.assertEqual(changed, ['origin/devel'])
         self.assertEqual(removed, ['origin/old'])
@@ -48,17 +48,21 @@ From github.com:remram44/doublegit
                     fp.write(contents)
                 check_call(['git', 'add', 'f'], cwd=origin)
 
+            def env(n):
+                time = self.time(n).strftime('%Y-%m-%d %H:%M:%S -0400')
+                return {'GIT_COMMITTER_DATE': time,
+                        'GIT_AUTHOR_DATE': time,
+                        'GIT_AUTHOR_NAME': 'doublegit',
+                        'GIT_AUTHOR_EMAIL': 'doublegit@example.com',
+                        'GIT_COMMITTER_NAME': 'doublegit',
+                        'GIT_COMMITTER_EMAIL': 'doublegit@example.com'}
+
             def commit(n, msg):
                 time = self.time(n).strftime('%Y-%m-%d %H:%M:%S -0400')
                 check_call(
                     ['git', 'commit', '--date=%s' % time, '-m', msg],
                     cwd=origin,
-                    env={'GIT_COMMITTER_DATE': time,
-                         'GIT_AUTHOR_DATE': time,
-                         'GIT_AUTHOR_NAME': 'doublegit',
-                         'GIT_AUTHOR_EMAIL': 'doublegit@example.com',
-                         'GIT_COMMITTER_NAME': 'doublegit',
-                         'GIT_COMMITTER_EMAIL': 'doublegit@example.com'},
+                    env=env(n),
                 )
 
             # Recording folder
@@ -133,10 +137,29 @@ From github.com:remram44/doublegit
                 'keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619',
                 'keep-54356c0e8c1cb663294d64157f517f980e5fbd98',
             })
+
+            # Create light-weight tag1
+            check_call(['git', 'tag', 'tag1',
+                        'ae79568054d9fa2e4956968310655e9bcbd60e2f'],
+                       cwd=origin)
+            doublegit.update(mirror, time=self.time(7))
+            self.check_db(mirror, [
+                ('tag1', 7, None, 'ae79568054d9fa2e4956968310655e9bcbd60e2f'),
+            ], tags=True)
+
+            # Create annotated tag2
+            check_call(['git', 'tag', '-a', 'tag2', '-m', 'tag2msg'
+                        '8dcda34bbae83d2e3d856cc5dbc356ee6e947619'],
+                       cwd=origin, env=env(8))
+            doublegit.update(mirror, time=self.time(8))
+            self.check_db(mirror, [
+                ('tag1', 7, None, 'ae79568054d9fa2e4956968310655e9bcbd60e2f'),
+                ('tag2', 8, None, 'cff7ce87239f1841265e000d02cf84cf0f7c431a'),
+            ], tags=True)
         finally:
             shutil.rmtree(test_dir)
 
-    def check_db(self, repo, expected):
+    def check_db(self, repo, expected, tags=False):
         strftime = lambda n: (self.time(n).strftime('%Y-%m-%d %H:%M:%S')
                               if n else None)
         expected = [
@@ -151,8 +174,10 @@ From github.com:remram44/doublegit
             '''
             SELECT name, from_date, to_date, sha
             FROM refs
+            WHERE tag=?
             ORDER BY from_date, name;
             ''',
+            [tags],
         ))
         self.assertEqual(refs, expected)
 

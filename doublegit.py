@@ -31,15 +31,16 @@ class Operation(object):
 def fetch(repository):
     cmd = ['git', 'fetch', '--prune', '--all']
     proc = subprocess.Popen(cmd, cwd=repository,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, err = proc.communicate()
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    out, _ = proc.communicate()
     if proc.wait() != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd)
 
-    return parse_fetch_output(err)
+    return parse_fetch_output(out)
 
 
 def parse_fetch_output(err):
+    remote = None
     new = []
     changed = []
     removed = []
@@ -48,26 +49,30 @@ def parse_fetch_output(err):
         line = line.decode('utf-8')
         m = _re_fetch.match(line)
         if m is not None:
+            assert remote
             logger.info("> %s", line)
             op, summary, from_, to, reason = m.groups()
 
             if op == Operation.NEW:
                 if '/' not in to:  # tag
-                    continue
-                new.append(to)
+                    tags.append((remote, to))
+                else:
+                    new.append(to)
             elif op in (Operation.FAST_FORWARD, Operation.FORCED):
                 changed.append(to)
             elif op == Operation.PRUNED:
                 removed.append(to)
             elif op == Operation.TAG:
-                tags.append(to)
+                tags.append((remote, to))
             elif op == Operation.REJECT:
                 raise ValueError("Error updating ref %s" % to)
             else:
                 raise RuntimeError
+        elif line.startswith('Fetching '):
+            remote = line[9].strip()
         else:
             logger.info("! %s", line)
-    return new, changed, removed
+    return new, changed, removed, tags
 
 
 def get_sha(repository, ref):
@@ -121,7 +126,8 @@ def update(repository, time=None):
                 name TEXT NOT NULL,
                 from_date DATETIME NOT NULL,
                 to_date DATETIME NULL,
-                sha TEXT NOT NULL
+                sha TEXT NOT NULL,
+                tag BOOLEAN NOT NULL
             );
             ''',
         )
@@ -129,7 +135,7 @@ def update(repository, time=None):
         conn = sqlite3.connect(db_path)
 
     # Do fetch
-    new, changed, removed = fetch(repository)
+    new, changed, removed, tags = fetch(repository)
 
     if time is None:
         time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
@@ -151,14 +157,23 @@ def update(repository, time=None):
         remote, name = ref.split('/', 1)
         conn.execute(
             '''
-            INSERT INTO refs(remote, name, from_date, to_date, sha)
-            VALUES(?, ?, ?, NULL, ?);
+            INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
+            VALUES(?, ?, ?, NULL, ?, 0);
             ''',
             [remote, name, time, sha],
         )
+    for remote, tag in tags:
+        sha = get_sha(repository, tag)
+        conn.execute(
+            '''
+            INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
+            VALUES(?, ?, ?, NULL, ?, 1);
+            ''',
+            [remote, tag, time, sha],
+        )
 
     # Create refs to prevent garbage collection
-    for ref in itertools.chain(changed, new):
+    for ref in itertools.chain(changed, new, (t for _, t in tags)):
         sha = get_sha(repository, ref)
         make_branch(repository, 'keep-%s' % sha, sha)
 
