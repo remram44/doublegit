@@ -1,4 +1,5 @@
 import argparse
+import collections
 from datetime import datetime
 import itertools
 import logging
@@ -18,6 +19,9 @@ _re_fetch = re.compile(r' ([+t*! -]) +([^ ]+|\[[^\]]+\]) +'
                        r'([^ ]+) +-> +([^ ]+)(?: +(.+))?$')
 
 
+Ref = collections.namedtuple('Ref', ['remote', 'name', 'tag'])
+
+
 class Operation(object):
     FAST_FORWARD = ' '
     FORCED = '+'
@@ -29,7 +33,7 @@ class Operation(object):
 
 
 def fetch(repository):
-    cmd = ['git', 'fetch', '--prune', '--all']
+    cmd = ['git', 'fetch', '--prune', '--all', '--prune-tags']
     proc = subprocess.Popen(cmd, cwd=repository,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, _ = proc.communicate()
@@ -39,12 +43,28 @@ def fetch(repository):
     return parse_fetch_output(out)
 
 
+def parse_remote_ref(ref, remote, tag):
+    remote_part, name = ref.split('/', 1)
+    try:
+        assert remote_part == remote
+    except AssertionError:
+        logger.error("remote=%r remote_part=%r", remote, remote_part)
+        raise
+    return Ref(remote, name, tag)
+
+
+def ref_name(ref):
+    if ref.tag:
+        return ref.name
+    else:
+        return '%s/%s' % (ref.remote, ref.name)
+
+
 def parse_fetch_output(err):
     remote = None
     new = []
     changed = []
     removed = []
-    tags = []
     for line in err.splitlines():
         line = line.decode('utf-8')
         m = _re_fetch.match(line)
@@ -55,24 +75,28 @@ def parse_fetch_output(err):
 
             if op == Operation.NEW:
                 if '/' not in to:  # tag
-                    tags.append((remote, to))
+                    new.append(Ref(remote, to, True))
                 else:
-                    new.append(to)
+                    new.append(parse_remote_ref(to, remote, False))
             elif op in (Operation.FAST_FORWARD, Operation.FORCED):
-                changed.append(to)
+                changed.append(parse_remote_ref(to, remote, False))
             elif op == Operation.PRUNED:
-                removed.append(to)
+                if '/' not in to:  # tag
+                    removed.append(Ref(remote, to, True))
+                else:
+                    removed.append(parse_remote_ref(to, remote, False))
             elif op == Operation.TAG:
-                tags.append((remote, to))
+                changed.append(Ref(remote, to, True))
             elif op == Operation.REJECT:
                 raise ValueError("Error updating ref %s" % to)
             else:
                 raise RuntimeError
         elif line.startswith('Fetching '):
-            remote = line[9].strip()
+            logger.info("< %s", line)
+            remote = line[9:].strip()
         else:
             logger.info("! %s", line)
-    return new, changed, removed, tags
+    return new, changed, removed
 
 
 def get_sha(repository, ref):
@@ -135,14 +159,13 @@ def update(repository, time=None):
         conn = sqlite3.connect(db_path)
 
     # Do fetch
-    new, changed, removed, tags = fetch(repository)
+    new, changed, removed = fetch(repository)
 
     if time is None:
         time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
     # Update database
     for ref in itertools.chain(removed, changed):
-        remote, name = ref.split('/', 1)
         conn.execute(
             '''
             UPDATE refs SET to_date=?
@@ -150,36 +173,26 @@ def update(repository, time=None):
             ORDER BY from_date DESC
             LIMIT 1;
             ''',
-            [time, remote, name],
+            [time, ref.remote, ref.name],
         )
     for ref in itertools.chain(changed, new):
-        sha = get_sha(repository, ref)
-        remote, name = ref.split('/', 1)
+        sha = get_sha(repository, ref_name(ref))
         conn.execute(
             '''
             INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
-            VALUES(?, ?, ?, NULL, ?, 0);
+            VALUES(?, ?, ?, NULL, ?, ?);
             ''',
-            [remote, name, time, sha],
-        )
-    for remote, tag in tags:
-        sha = get_sha(repository, tag)
-        conn.execute(
-            '''
-            INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
-            VALUES(?, ?, ?, NULL, ?, 1);
-            ''',
-            [remote, tag, time, sha],
+            [ref.remote, ref.name, time, sha, int(ref.tag)],
         )
 
     # Create refs to prevent garbage collection
-    for ref in itertools.chain(changed, new, (t for _, t in tags)):
-        sha = get_sha(repository, ref)
+    for ref in itertools.chain(changed, new):
+        sha = get_sha(repository, ref_name(ref))
         make_branch(repository, 'keep-%s' % sha, sha)
 
     # Remove superfluous branches
     for ref in itertools.chain(changed, new):
-        sha = get_sha(repository, ref)
+        sha = get_sha(repository, ref_name(ref))
         keeper = 'keep-%s' % sha
         for br in included_branches(repository, sha):
             if br != keeper:

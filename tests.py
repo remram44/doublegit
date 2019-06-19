@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 import doublegit
+from doublegit import Ref
 
 
 class TestFetch(unittest.TestCase):
@@ -25,10 +26,10 @@ From github.com:remram44/doublegit
    673b728..466e90b  devel      -> origin/devel
  - [deleted]         (none)     -> origin/old
 '''
-        new, changed, removed, tags = doublegit.parse_fetch_output(output)
-        self.assertEqual(new, ['origin/master'])
-        self.assertEqual(changed, ['origin/devel'])
-        self.assertEqual(removed, ['origin/old'])
+        new, changed, removed = doublegit.parse_fetch_output(output)
+        self.assertEqual(new, [Ref('origin', 'master', False)])
+        self.assertEqual(changed, [Ref('origin', 'devel', False)])
+        self.assertEqual(removed, [Ref('origin', 'old', False)])
 
     @staticmethod
     def time(n):
@@ -155,6 +156,32 @@ From github.com:remram44/doublegit
             self.check_db(mirror, [
                 ('tag1', 7, None, 'ae79568054d9fa2e4956968310655e9bcbd60e2f'),
                 ('tag2', 8, None, 'cff7ce87239f1841265e000d02cf84cf0f7c431a'),
+            ], tags=True)
+
+            # Move the tags
+            check_call(['git', 'tag', '-f', 'tag1',
+                        '8dcda34bbae83d2e3d856cc5dbc356ee6e947619'],
+                       cwd=origin)
+            check_call(['git', 'tag', '-a', '-f', 'tag2', '-m', 'tag2msg'
+                        'ae79568054d9fa2e4956968310655e9bcbd60e2f'],
+                       cwd=origin, env=env(9))
+            doublegit.update(mirror, time=self.time(9))
+            self.check_db(mirror, [
+                ('tag1', 7, 9, 'ae79568054d9fa2e4956968310655e9bcbd60e2f'),
+                ('tag2', 8, 9, 'cff7ce87239f1841265e000d02cf84cf0f7c431a'),
+                ('tag1', 9, None, '8dcda34bbae83d2e3d856cc5dbc356ee6e947619'),
+                ('tag2', 9, None, '800f66ec3fdf80da1c771bafff69ce9a7789e557'),
+            ], tags=True)
+
+            # Remove the tags
+            check_call(['git', 'tag', '-d', 'tag1', 'tag2'],
+                       cwd=origin)
+            doublegit.update(mirror, time=self.time(10))
+            self.check_db(mirror, [
+                ('tag1', 7, 9, 'ae79568054d9fa2e4956968310655e9bcbd60e2f'),
+                ('tag2', 8, 9, 'cff7ce87239f1841265e000d02cf84cf0f7c431a'),
+                ('tag1', 9, 10, '8dcda34bbae83d2e3d856cc5dbc356ee6e947619'),
+                ('tag2', 9, 10, '800f66ec3fdf80da1c771bafff69ce9a7789e557'),
             ], tags=True)
         finally:
             shutil.rmtree(test_dir)
