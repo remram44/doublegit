@@ -33,7 +33,7 @@ class Operation(object):
 
 
 def fetch(repository):
-    cmd = ['git', 'fetch', '--prune', '--all', '--prune-tags']
+    cmd = ['git', 'fetch', '--prune', '--all', '+refs/tags/*:refs/tags/*']
     proc = subprocess.Popen(cmd, cwd=repository,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, _ = proc.communicate()
