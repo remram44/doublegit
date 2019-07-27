@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+import logging
 import os
 from os.path import join
 import shutil
@@ -10,6 +11,9 @@ import unittest
 
 import doublegit
 from doublegit import Ref
+
+
+logging.basicConfig(level=logging.INFO)
 
 
 class TestFetch(unittest.TestCase):
