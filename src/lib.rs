@@ -50,7 +50,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Operation {
     FastForward,
     Forced,
@@ -61,7 +61,7 @@ enum Operation {
     Noop,
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ref {
     remote: String,
     name: String,
@@ -182,4 +182,43 @@ where
     tx.commit()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::Ref;
+
+    #[test]
+    fn test_ref_parse() {
+        assert_eq!(
+            Ref::parse_remote_ref("origin/master", "origin").unwrap(),
+            Ref {
+                remote: "origin".into(),
+                name: "master".into(),
+                tag: false,
+            },
+        );
+        assert!(Ref::parse_remote_ref("origin/master", "upstream").is_err());
+        assert!(Ref::parse_remote_ref("master", "origin").is_err());
+    }
+
+    #[test]
+    fn test_ref_fullname() {
+        assert_eq!(
+            &Ref {
+                remote: "origin".into(),
+                name: "master".into(),
+                tag: false,
+            }.fullname() as &str,
+            "origin/master",
+        );
+        assert_eq!(
+            &Ref {
+                remote: "origin".into(),
+                name: "release".into(),
+                tag: true,
+            }.fullname() as &str,
+            "release",
+        );
+    }
 }

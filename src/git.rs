@@ -39,10 +39,10 @@ pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
         return Err(Error::Git(format!("`git fetch` returned {}",
                                       output.status)));
     }
-    parse_fetch_output(output.stderr)
+    parse_fetch_output(&output.stderr)
 }
 
-fn parse_fetch_output(output: Vec<u8>) -> Result<FetchOutput, Error> {
+fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
     lazy_static! {
         static ref _RE_FETCH: Regex = Regex::new(
             r"^ ([+t*! -]) +([^ ]+|\[[^\]]+\]) +([^ ]+) +-> +([^ ]+)(?: +(.+))?$"
@@ -197,4 +197,66 @@ pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
         return Err(Error::Git(format!("`git branch -D` returned {}", status)));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{Operation, Ref};
+    use crate::git::{parse_operation, parse_fetch_output};
+
+    #[test]
+    fn test_parse_operation() {
+        assert!(parse_operation("").is_err());
+        assert!(parse_operation("++").is_err());
+        assert_eq!("\u{E9}".len(), 2);
+        assert!(parse_operation("\u{E9}").is_err());
+        assert_eq!(parse_operation("+").unwrap(), Operation::Forced);
+    }
+
+    #[test]
+    fn test_parse_fetch() {
+        let stderr: &[u8] = b"
+Fetching origin
+remote: Enumerating objects: 14, done.
+remote: Counting objects: 100% (14/14), done.
+remote: Compressing objects: 100% (11/11), done.
+remote: Total 14 (delta 3), reused 12 (delta 1), pack-reused 0
+Unpacking objects: 100% (14/14), done.
+From github.com:remram44/doublegit
+ * [new branch]      master     -> origin/master
+   673b728..466e90b  devel      -> origin/devel
+ - [deleted]         (none)     -> origin/old
+";
+        let output = parse_fetch_output(stderr).unwrap();
+        assert_eq!(
+            output.new,
+            [
+                Ref {
+                    remote: "origin".into(),
+                    name: "master".into(),
+                    tag: false,
+                },
+            ].iter().cloned().collect(),
+        );
+        assert_eq!(
+            output.changed,
+            [
+                Ref {
+                    remote: "origin".into(),
+                    name: "devel".into(),
+                    tag: false,
+                },
+            ].iter().cloned().collect(),
+        );
+        assert_eq!(
+            output.removed,
+            [
+                Ref {
+                    remote: "origin".into(),
+                    name: "old".into(),
+                    tag: false,
+                },
+            ].iter().cloned().collect(),
+        );
+    }
 }
