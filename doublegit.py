@@ -198,7 +198,7 @@ def update(repository, time=None):
             if br != keeper:
                 delete_branch(repository, br)
         if len(including_branches(repository, sha)) > 1:
-            delete_branch(repository, 'keep-%s' % sha)
+            delete_branch(repository, keeper)
 
     conn.commit()
 
