@@ -15,6 +15,7 @@ mod git;
 pub enum Error {
     Sqlite(rusqlite::Error),
     Git(String),
+    Io(std::io::Error),
 }
 
 impl Error {
@@ -28,6 +29,7 @@ impl fmt::Display for Error {
         match self {
             Error::Sqlite(e) => write!(f, "SQLite error: {}", e),
             Error::Git(e) => write!(f, "Git error: {}", e),
+            Error::Io(e) => write!(f, "I/O error: {}", e),
         }
     }
 }
@@ -37,6 +39,12 @@ impl std::error::Error for Error {}
 impl From<rusqlite::Error> for Error {
     fn from(e: rusqlite::Error) -> Error {
         Error::Sqlite(e)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Error {
+        Error::Io(e)
     }
 }
 
@@ -60,9 +68,15 @@ impl Ref {
     fn parse_remote_ref(
         refname: &str,
         remote: &str,
-        tag: bool,
-    ) -> Result<Ref, ()> {
-        unimplemented!()
+    ) -> Result<Ref, Error> {
+        let idx = refname.find('/')
+            .ok_or(Error::git("Invalid remote ref"))?;
+        let remote_part = &refname[0..idx];
+        if remote_part != remote {
+            return Err(Error::git("Remote ref has invalid remote"));
+        }
+        let name = &refname[idx + 1..];
+        Ok(Ref { remote: remote.into(), name: name.into(), tag: false })
     }
 
     fn fullname(&self) -> Cow<String> {
