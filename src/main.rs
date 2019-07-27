@@ -52,6 +52,9 @@ fn main() {
     let repository = Path::new(repository);
     match doublegit::update(repository) {
         Ok(()) => {},
-        Err(()) => panic!("Error"),
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
     }
 }
