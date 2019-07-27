@@ -1,5 +1,7 @@
 extern crate chrono;
+#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
+extern crate regex;
 extern crate rusqlite;
 
 use rusqlite::Connection;
@@ -48,6 +50,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
+#[derive(Clone, Copy)]
 enum Operation {
     FastForward,
     Forced,
@@ -58,6 +61,7 @@ enum Operation {
     Noop,
 }
 
+#[derive(PartialEq, Eq, Hash)]
 pub struct Ref {
     remote: String,
     name: String,
