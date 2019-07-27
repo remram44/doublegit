@@ -33,7 +33,8 @@ class Operation(object):
 
 
 def fetch(repository):
-    cmd = ['git', 'fetch', '--prune', 'origin', '+refs/tags/*:refs/tags/*']
+    cmd = ['git', 'fetch', '--prune', 'origin',
+           '+refs/tags/*:refs/tags/*', '+refs/heads/*:refs/remotes/origin/*']
     proc = subprocess.Popen(cmd, cwd=repository,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     out, _ = proc.communicate()
@@ -61,7 +62,7 @@ def ref_name(ref):
 
 
 def parse_fetch_output(err):
-    remote = None
+    remote = 'origin'
     new = []
     changed = []
     removed = []
@@ -69,7 +70,6 @@ def parse_fetch_output(err):
         line = line.decode('utf-8')
         m = _re_fetch.match(line)
         if m is not None:
-            assert remote
             logger.info("> %s", line)
             op, summary, from_, to, reason = m.groups()
 
@@ -91,9 +91,6 @@ def parse_fetch_output(err):
                 raise ValueError("Error updating ref %s" % to)
             else:
                 raise RuntimeError
-        elif line.startswith('Fetching '):
-            logger.info("< %s", line)
-            remote = line[9:].strip()
         else:
             logger.info("! %s", line)
     return new, changed, removed
