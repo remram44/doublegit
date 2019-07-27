@@ -5,17 +5,16 @@ extern crate rusqlite;
 use rusqlite::Connection;
 use rusqlite::types::ToSql;
 use std::borrow::Cow;
-use std::collections::HashSet;
-use std::convert::TryFrom;
 use std::fmt;
-use std::io::Read;
 use std::path::Path;
 use std::time::SystemTime;
+
+mod git;
 
 #[derive(Debug)]
 pub enum Error {
     Sqlite(rusqlite::Error),
-    Git(String),
+    Git(git::GitError),
 }
 
 impl fmt::Display for Error {
@@ -35,6 +34,12 @@ impl From<rusqlite::Error> for Error {
     }
 }
 
+impl From<git::GitError> for Error {
+    fn from(e: git::GitError) -> Error {
+        Error::Git(e)
+    }
+}
+
 enum Operation {
     FastForward,
     Forced,
@@ -43,23 +48,6 @@ enum Operation {
     New,
     Reject,
     Noop,
-}
-
-impl TryFrom<u8> for Operation {
-    type Error = ();
-
-    fn try_from(chr: u8) -> Result<Operation, Self::Error> {
-        Ok(match chr {
-            b' ' => Operation::FastForward,
-            b'+' => Operation::Forced,
-            b'-' => Operation::Pruned,
-            b't' => Operation::Tag,
-            b'*' => Operation::New,
-            b'!' => Operation::Reject,
-            b'=' => Operation::Noop,
-            _ => return Err(()),
-        })
-    }
 }
 
 pub struct Ref {
@@ -84,45 +72,6 @@ impl Ref {
             Cow::Owned(format!("{}/{}", self.remote, self.name))
         }
     }
-}
-
-struct FetchOutput {
-    new: HashSet<Ref>,
-    changed: HashSet<Ref>,
-    removed: HashSet<Ref>,
-}
-
-fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
-    unimplemented!()
-}
-
-fn parse_fetch_output<R: Read>(output: R) -> Result<FetchOutput, Error> {
-    unimplemented!()
-}
-
-fn get_sha(repository: &Path, refname: &str) -> Result<String, Error> {
-    unimplemented!()
-}
-
-fn make_branch(repository: &Path, name: &str, sha: &str) -> Result<(), Error> {
-    unimplemented!()
-}
-
-fn included_branches(
-    repository: &Path, target: &str,
-) -> Result<Vec<String>, Error> {
-    unimplemented!()
-}
-
-fn including_branches(
-    repository: &Path,
-    target: &str,
-) -> Result<Vec<String>, Error> {
-    unimplemented!()
-}
-
-fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
-    unimplemented!()
 }
 
 pub fn update(repository: &Path) -> Result<(), Error> {
@@ -164,7 +113,7 @@ where
     let tx = db.transaction()?;
 
     // Do fetch
-    let out = fetch(repository)?;
+    let out = git::fetch(repository)?;
 
     // Convert time to string
     let date = date.into().format("%Y-%m-%d %H:%M:%S").to_string();
@@ -182,7 +131,7 @@ where
         )?;
     }
     for ref_ in out.changed.iter().chain(out.new.iter()) {
-        let sha = get_sha(repository, &ref_.fullname())?;
+        let sha = git::get_sha(repository, &ref_.fullname())?;
         tx.execute(
             "
             INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
@@ -194,21 +143,21 @@ where
 
     // Create refs to prevent garbage collection
     for ref_ in out.changed.iter().chain(out.new.iter()) {
-        let sha = get_sha(repository, &ref_.fullname())?;
-        make_branch(repository, &format!("keep-{}", sha), &sha)?;
+        let sha = git::get_sha(repository, &ref_.fullname())?;
+        git::make_branch(repository, &format!("keep-{}", sha), &sha)?;
     }
 
     // Remove superfluous branches
     for ref_ in out.changed.iter().chain(out.new.iter()) {
-        let sha = get_sha(repository, &ref_.fullname())?;
+        let sha = git::get_sha(repository, &ref_.fullname())?;
         let keeper = format!("keep-{}", sha);
-        for br in included_branches(repository, &sha)? {
+        for br in git::included_branches(repository, &sha)? {
             if br != keeper {
-                delete_branch(repository, &br)?;
+                git::delete_branch(repository, &br)?;
             }
         }
-        if including_branches(repository, &sha)?.len() > 1 {
-            delete_branch(repository, &keeper)?;
+        if git::including_branches(repository, &sha)?.len() > 1 {
+            git::delete_branch(repository, &keeper)?;
         }
     }
 
