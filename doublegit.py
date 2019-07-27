@@ -194,7 +194,7 @@ def update(repository, time=None):
         for br in included_branches(repository, sha):
             if br != keeper:
                 delete_branch(repository, br)
-        if len(including_branches(repository, sha)) > 1:
+        if not ref.tag and len(including_branches(repository, sha)) > 1:
             delete_branch(repository, keeper)
 
     conn.commit()
