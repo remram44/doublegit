@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::collections::HashSet;
+use std::ops::Not;
 use std::path::Path;
 use std::process;
 
@@ -30,10 +31,12 @@ pub struct FetchOutput {
 
 pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
     let output = process::Command::new("git")
-        .args(&["fetch", "--prune", "--all", "+refs/tags/*:refs/tags/*"])
+        .args(&["fetch", "--prune", "origin",
+                "+refs/tags/*:refs/tags/*",
+                "+refs/heads/*:refs/remotes/origin/*"])
         .current_dir(repository)
         .stdin(process::Stdio::null())
-        .stdout(process::Stdio::null())
+        .stdout(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
         return Err(Error::Git(format!("`git fetch` returned {}",
@@ -158,8 +161,10 @@ pub fn included_branches(
     let mut refs = Vec::new();
     for line in output.stdout.split(|&b| b == b'\n') {
         let line = std::str::from_utf8(line)
-            .map_err(|_| Error::git("Non-utf8 branch name"))?;
-        refs.push(line.trim().into());
+            .map_err(|_| Error::git("Non-utf8 branch name"))?.trim();
+        if line.is_empty().not() {
+            refs.push(line.into());
+        }
     }
     Ok(refs)
 }
@@ -181,8 +186,10 @@ pub fn including_branches(
     let mut refs = Vec::new();
     for line in output.stdout.split(|&b| b == b'\n') {
         let line = std::str::from_utf8(line)
-            .map_err(|_| Error::git("Non-utf8 branch name"))?;
-        refs.push(line.trim().into());
+            .map_err(|_| Error::git("Non-utf8 branch name"))?.trim();
+        if line.is_empty().not() {
+            refs.push(line.into());
+        }
     }
     Ok(refs)
 }
