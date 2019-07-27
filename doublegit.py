@@ -43,14 +43,14 @@ def fetch(repository):
     return parse_fetch_output(out)
 
 
-def parse_remote_ref(ref, remote, tag):
+def parse_remote_ref(ref, remote):
     remote_part, name = ref.split('/', 1)
     try:
         assert remote_part == remote
     except AssertionError:
         logger.error("remote=%r remote_part=%r", remote, remote_part)
         raise
-    return Ref(remote, name, tag)
+    return Ref(remote, name, False)
 
 
 def ref_name(ref):
@@ -77,14 +77,14 @@ def parse_fetch_output(err):
                 if '/' not in to:  # tag
                     new.append(Ref(remote, to, True))
                 else:
-                    new.append(parse_remote_ref(to, remote, False))
+                    new.append(parse_remote_ref(to, remote))
             elif op in (Operation.FAST_FORWARD, Operation.FORCED):
-                changed.append(parse_remote_ref(to, remote, False))
+                changed.append(parse_remote_ref(to, remote))
             elif op == Operation.PRUNED:
                 if '/' not in to:  # tag
                     removed.append(Ref(remote, to, True))
                 else:
-                    removed.append(parse_remote_ref(to, remote, False))
+                    removed.append(parse_remote_ref(to, remote))
             elif op == Operation.TAG:
                 changed.append(Ref(remote, to, True))
             elif op == Operation.REJECT:
