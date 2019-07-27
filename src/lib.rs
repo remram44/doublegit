@@ -1,3 +1,4 @@
+extern crate chrono;
 #[macro_use] extern crate log;
 extern crate rusqlite;
 
@@ -128,10 +129,13 @@ pub fn update(repository: &Path) -> Result<(), Error> {
     update_with_date(repository, SystemTime::now())
 }
 
-pub fn update_with_date(
+pub fn update_with_date<Date>(
     repository: &Path,
-    date: SystemTime,
-) -> Result<(), Error> {
+    date: Date,
+) -> Result<(), Error>
+where
+    Date: Into<chrono::DateTime<chrono::Utc>>,
+{
     info!("Updating {:?}...", repository);
 
     // Open database
@@ -163,7 +167,7 @@ pub fn update_with_date(
     let out = fetch(repository)?;
 
     // Convert time to string
-    let date = unimplemented!();
+    let date = date.into().format("%Y-%m-%d %H:%M:%S").to_string();
 
     // Update database
     for ref_ in out.removed.iter().chain(out.changed.iter()) {
