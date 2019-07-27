@@ -1,0 +1,17 @@
+[package]
+name = "doublegit"
+version = "0.1.0"
+authors = ["Remi Rampin <r@remirampin.com>"]
+description = "Version and backup a Git repository"
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[[bin]]
+name = "doublegit"
+path = "src/main.rs"
+
+[dependencies]
+clap = "2"
+rusqlite = "0.16"
+log = "0.4"
+env_logger = "0.6"
