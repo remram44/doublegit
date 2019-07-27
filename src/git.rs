@@ -70,35 +70,47 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
             match op {
                 Operation::New => {
                     if !to.contains('/') { // tag
-                        new.insert(Ref {
+                        let ref_ = Ref {
                             remote: remote.into(),
                             name: to.into(),
                             tag: true,
-                        });
+                        };
+                        info!("New tag {}", ref_.name);
+                        new.insert(ref_);
                     } else {
-                        new.insert(Ref::parse_remote_ref(to, remote)?);
+                        let ref_ = Ref::parse_remote_ref(to, remote)?;
+                        info!("New branch {}", ref_.name);
+                        new.insert(ref_);
                     }
                 }
                 Operation::FastForward|Operation::Forced => {
-                    changed.insert(Ref::parse_remote_ref(to, remote)?);
+                    let ref_ = Ref::parse_remote_ref(to, remote)?;
+                    info!("Updated branch {}", ref_.name);
+                    changed.insert(ref_);
                 }
                 Operation::Pruned => {
                     if !to.contains('/') { // tag
-                        removed.insert(Ref {
+                        let ref_ = Ref {
                             remote: remote.into(),
                             name: to.into(),
                             tag: true,
-                        });
+                        };
+                        info!("Pruned tag {}", ref_.name);
+                        removed.insert(ref_);
                     } else {
-                        removed.insert(Ref::parse_remote_ref(to, remote)?);
+                        let ref_ = Ref::parse_remote_ref(to, remote)?;
+                        info!("Pruned branch {}", ref_.name);
+                        removed.insert(ref_);
                     }
                 }
                 Operation::Tag => {
-                    changed.insert(Ref {
+                    let ref_ = Ref {
                         remote: remote.into(),
                         name: to.into(),
                         tag: true,
-                    });
+                    };
+                    info!("Updated tag {}", ref_.name);
+                    changed.insert(ref_);
                 }
                 Operation::Reject => {
                     return Err(Error::Git(format!("Error updating ref {}",
