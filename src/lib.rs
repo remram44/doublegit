@@ -14,7 +14,13 @@ mod git;
 #[derive(Debug)]
 pub enum Error {
     Sqlite(rusqlite::Error),
-    Git(git::GitError),
+    Git(String),
+}
+
+impl Error {
+    fn git(msg: &str) -> Error {
+        Error::Git(msg.into())
+    }
 }
 
 impl fmt::Display for Error {
@@ -31,12 +37,6 @@ impl std::error::Error for Error {}
 impl From<rusqlite::Error> for Error {
     fn from(e: rusqlite::Error) -> Error {
         Error::Sqlite(e)
-    }
-}
-
-impl From<git::GitError> for Error {
-    fn from(e: git::GitError) -> Error {
-        Error::Git(e)
     }
 }
 

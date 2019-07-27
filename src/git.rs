@@ -1,22 +1,10 @@
 use std::collections::HashSet;
-use std::fmt;
 use std::io::Read;
 use std::path::Path;
 
-use crate::{Operation, Ref};
+use crate::{Error, Operation, Ref};
 
-#[derive(Debug)]
-pub struct GitError(String);
-
-impl fmt::Display for GitError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::error::Error for GitError {}
-
-fn parse_operation(chr: u8) -> Result<Operation, GitError> {
+fn parse_operation(chr: u8) -> Result<Operation, Error> {
     Ok(match chr {
         b' ' => Operation::FastForward,
         b'+' => Operation::Forced,
@@ -25,7 +13,7 @@ fn parse_operation(chr: u8) -> Result<Operation, GitError> {
         b'*' => Operation::New,
         b'!' => Operation::Reject,
         b'=' => Operation::Noop,
-        _ => return Err(GitError("Parse error: invalid operation".into())),
+        _ => return Err(Error::git("Parse error: invalid operation")),
     })
 }
 
@@ -35,15 +23,15 @@ pub struct FetchOutput {
     pub removed: HashSet<Ref>,
 }
 
-pub fn fetch(repository: &Path) -> Result<FetchOutput, GitError> {
+pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
     unimplemented!()
 }
 
-fn parse_fetch_output<R: Read>(output: R) -> Result<FetchOutput, GitError> {
+fn parse_fetch_output<R: Read>(output: R) -> Result<FetchOutput, Error> {
     unimplemented!()
 }
 
-pub fn get_sha(repository: &Path, refname: &str) -> Result<String, GitError> {
+pub fn get_sha(repository: &Path, refname: &str) -> Result<String, Error> {
     unimplemented!()
 }
 
@@ -51,23 +39,23 @@ pub fn make_branch(
     repository: &Path,
     name: &str,
     sha: &str,
-) -> Result<(), GitError> {
+) -> Result<(), Error> {
     unimplemented!()
 }
 
 pub fn included_branches(
     repository: &Path, target: &str,
-) -> Result<Vec<String>, GitError> {
+) -> Result<Vec<String>, Error> {
     unimplemented!()
 }
 
 pub fn including_branches(
     repository: &Path,
     target: &str,
-) -> Result<Vec<String>, GitError> {
+) -> Result<Vec<String>, Error> {
     unimplemented!()
 }
 
-pub fn delete_branch(repository: &Path, name: &str) -> Result<(), GitError> {
+pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
     unimplemented!()
 }
