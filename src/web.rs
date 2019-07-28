@@ -28,9 +28,10 @@ pub fn serve(
 
     // Load templates
     let mut templates = Handlebars::new();
-    templates
-        .register_template_string("browse.html", include_str!("browse.html"))
-        .unwrap();
+    #[cfg(debug_assertions)]
+    templates.register_template_file("browse.html", "src/browse.html").unwrap();
+    #[cfg(not(debug_assertions))]
+    templates.register_template_string("browse.html", include_str!("browse.html")).unwrap();
     let templates = Arc::new(templates);
     let templates = warp::any().map(move || templates.clone());
 
