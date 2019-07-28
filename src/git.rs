@@ -374,55 +374,57 @@ From github.com:remram44/doublegit
                 .status().unwrap().success());
         write("one");
         commit(0, "one");
+        let hash_one = "ae79568054d9fa2e4956968310655e9bcbd60e2f";
         crate::update_with_date(&mirror, time(1)).unwrap();
         assert!(mirror.join("gitarchive.sqlite3").exists());
         check_db(
             &mirror,
             &[
-                ("br1", 1, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
+                ("br1", 1, None, hash_one),
             ],
             false,
         );
         check_refs(
             &mirror,
-            &["keep-ae79568054d9fa2e4956968310655e9bcbd60e2f"],
+            &[hash_one],
         );
 
         // Update branch br1
         write("two");
         commit(2, "two");
+        let hash_two = "8dcda34bbae83d2e3d856cc5dbc356ee6e947619";
         crate::update_with_date(&mirror, time(3)).unwrap();
         check_db(
             &mirror,
             &[
-                ("br1", 1, Some(3), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("br1", 3, None, "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
+                ("br1", 1, Some(3), hash_one),
+                ("br1", 3, None, hash_two),
             ],
             false,
         );
         check_refs(
             &mirror,
-            &["keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619"],
+            &[hash_two],
         );
 
         // Force-push branch br1 back
         assert!(process::Command::new("git")
-                .args(&["reset", "--keep", "ae79568"])
+                .args(&["reset", "--keep", hash_one])
                 .current_dir(&origin)
                 .status().unwrap().success());
         crate::update_with_date(&mirror, time(4)).unwrap();
         check_db(
             &mirror,
             &[
-                ("br1", 1, Some(3), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("br1", 3, Some(4), "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
-                ("br1", 4, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
+                ("br1", 1, Some(3), hash_one),
+                ("br1", 3, Some(4), hash_two),
+                ("br1", 4, None, hash_one),
             ],
             false,
         );
         check_refs(
             &mirror,
-            &["keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619"],
+            &[hash_two],
         );
 
         // Delete branch br1, create br2
@@ -436,100 +438,107 @@ From github.com:remram44/doublegit
                 .status().unwrap().success());
         write("three");
         commit(5, "three");
+        let hash_three = "54356c0e8c1cb663294d64157f517f980e5fbd98";
         crate::update_with_date(&mirror, time(6)).unwrap();
         check_db(
             &mirror,
             &[
-                ("br1", 1, Some(3), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("br1", 3, Some(4), "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
-                ("br1", 4, Some(6), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("br2", 6, None, "54356c0e8c1cb663294d64157f517f980e5fbd98"),
+                ("br1", 1, Some(3), hash_one),
+                ("br1", 3, Some(4), hash_two),
+                ("br1", 4, Some(6), hash_one),
+                ("br2", 6, None, hash_three),
             ],
             false,
         );
         check_refs(
             &mirror,
             &[
-                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
-                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+                hash_two,
+                hash_three,
             ],
         );
 
         // Create light-weight tag1
         assert!(process::Command::new("git")
                 .args(&["tag", "tag1"])
-                .arg("ae79568054d9fa2e4956968310655e9bcbd60e2f")
+                .arg(hash_one)
                 .current_dir(&origin)
                 .status().unwrap().success());
         crate::update_with_date(&mirror, time(7)).unwrap();
         check_db(
             &mirror,
             &[
-                ("tag1", 7, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
+                ("tag1", 7, None, hash_one),
             ],
             true,
         );
         check_refs(
             &mirror,
             &[
-                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
-                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
-                "keep-ae79568054d9fa2e4956968310655e9bcbd60e2f",
+                hash_one,
+                hash_two,
+                hash_three,
             ],
         );
 
         // Create annotated tag2
         assert!(process::Command::new("git")
                 .args(&["tag", "-a", "tag2", "-m", "tag2msg"])
-                .arg("8dcda34bbae83d2e3d856cc5dbc356ee6e947619")
+                .arg(hash_two)
                 .current_dir(&origin)
                 .envs(env(8))
                 .status().unwrap().success());
+        let hash_tag2_1 = "8fda1c0cfb4957e376fba4b53bf3ce080e25300c";
         crate::update_with_date(&mirror, time(8)).unwrap();
         check_db(
             &mirror,
             &[
-                ("tag1", 7, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("tag2", 8, None, "8fda1c0cfb4957e376fba4b53bf3ce080e25300c"),
+                ("tag1", 7, None, hash_one),
+                ("tag2", 8, None, hash_tag2_1),
             ],
             true,
         );
         check_refs(
             &mirror,
             &[
-                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
-                "keep-8fda1c0cfb4957e376fba4b53bf3ce080e25300c",
+                hash_three,
+                hash_tag2_1,
             ],
         );
+
+        //    /-- two (tag2)
+        // one
+        //    \-- three (br2,tag1)
 
         // Move the tags
         assert!(process::Command::new("git")
                 .args(&["tag", "-f", "tag1"])
-                .arg("8dcda34bbae83d2e3d856cc5dbc356ee6e947619")
+                .arg(hash_two)
                 .current_dir(&origin)
                 .status().unwrap().success());
         assert!(process::Command::new("git")
                 .args(&["tag", "-a", "-f", "tag2", "-m", "tag2msg"])
-                .arg("ae79568054d9fa2e4956968310655e9bcbd60e2f")
+                .arg(hash_one)
                 .current_dir(&origin)
                 .envs(env(9))
                 .status().unwrap().success());
+        let hash_tag2_2 = "a64697beb90c35d198fd25f2985cbc9e1ac1783e";
         crate::update_with_date(&mirror, time(9)).unwrap();
         check_db(
             &mirror,
             &[
-                ("tag1", 7, Some(9), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("tag2", 8, Some(9), "8fda1c0cfb4957e376fba4b53bf3ce080e25300c"),
-                ("tag1", 9, None, "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
-                ("tag2", 9, None, "a64697beb90c35d198fd25f2985cbc9e1ac1783e"),
+                ("tag1", 7, Some(9), hash_one),
+                ("tag2", 8, Some(9), hash_tag2_1),
+                ("tag1", 9, None, hash_two),
+                ("tag2", 9, None, hash_tag2_2),
             ],
             true,
         );
         check_refs(
             &mirror,
             &[
-                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
-                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+                hash_two,
+                hash_three,
             ],
         );
 
@@ -542,18 +551,18 @@ From github.com:remram44/doublegit
         check_db(
             &mirror,
             &[
-                ("tag1", 7, Some(9), "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
-                ("tag2", 8, Some(9), "8fda1c0cfb4957e376fba4b53bf3ce080e25300c"),
-                ("tag1", 9, Some(10), "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
-                ("tag2", 9, Some(10), "a64697beb90c35d198fd25f2985cbc9e1ac1783e"),
+                ("tag1", 7, Some(9), hash_one),
+                ("tag2", 8, Some(9), hash_tag2_1),
+                ("tag1", 9, Some(10), hash_two),
+                ("tag2", 9, Some(10), hash_tag2_2),
             ],
             true,
         );
         check_refs(
             &mirror,
             &[
-                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
-                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+                hash_two,
+                hash_three,
             ],
         );
     }
@@ -599,7 +608,12 @@ From github.com:remram44/doublegit
     }
 
     fn check_refs(repo: &Path, expected: &[&str]) {
-        let expected = expected.into_iter().cloned().collect();
+        // Format the expected list (add 'keep-' prefix)
+        let expected = expected.into_iter()
+            .map(|h| format!("keep-{}", h))
+            .collect();
+
+        // Get the actual list from Git
         let output = process::Command::new("git")
                 .arg("branch")
                 .current_dir(&repo)
@@ -609,10 +623,11 @@ From github.com:remram44/doublegit
         for line in output.stdout.split(|&b| b == b'\n') {
             let line = std::str::from_utf8(line).unwrap().trim();
             if line.is_empty().not() {
-                refs.insert(line);
+                refs.insert(line.into());
             }
         }
 
+        // Assert
         assert_eq!(refs, expected);
     }
 }
