@@ -13,33 +13,47 @@ fn main() {
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
-        .arg(Arg::with_name("verbose")
-             .short("v")
-             .help("Augment verbosity (print more details)")
-             .multiple(true))
-        .subcommand(SubCommand::with_name("update")
-                    .about("Fetch a repository and update its history")
-                    .arg(Arg::with_name("repository")
-                         .help("Path to repository")
-                         .required(true)
-                         .takes_value(true)));
+        .arg(
+            Arg::with_name("verbose")
+                .short("v")
+                .help("Augment verbosity (print more details)")
+                .multiple(true),
+        )
+        .subcommand(
+            SubCommand::with_name("update")
+                .about("Fetch a repository and update its history")
+                .arg(
+                    Arg::with_name("repository")
+                        .help("Path to repository")
+                        .required(true)
+                        .takes_value(true),
+                ),
+        );
     #[cfg(feature = "web")]
-    let cli = cli.subcommand(SubCommand::with_name("web")
-                             .about("Open the repository history web page")
-                             .arg(Arg::with_name("host")
-                                  .short("-h")
-                                  .help("Set the host to bind the server to")
-                                  .takes_value(true)
-                                  .default_value("127.0.0.1"))
-                             .arg(Arg::with_name("port")
-                                  .short("-p")
-                                  .help("Set the port number for the server")
-                                  .takes_value(true)
-                                  .default_value("6617"))
-                             .arg(Arg::with_name("repository")
-                                  .help("Path to repository")
-                                  .required(true)
-                                  .takes_value(true)));
+    let cli = cli.subcommand(
+        SubCommand::with_name("web")
+            .about("Open the repository history web page")
+            .arg(
+                Arg::with_name("host")
+                    .short("-h")
+                    .help("Set the host to bind the server to")
+                    .takes_value(true)
+                    .default_value("127.0.0.1"),
+            )
+            .arg(
+                Arg::with_name("port")
+                    .short("-p")
+                    .help("Set the port number for the server")
+                    .takes_value(true)
+                    .default_value("6617"),
+            )
+            .arg(
+                Arg::with_name("repository")
+                    .help("Path to repository")
+                    .required(true)
+                    .takes_value(true),
+            ),
+    );
 
     let mut cli = cli;
     let matches = match cli.get_matches_from_safe_borrow(env::args_os()) {
@@ -51,7 +65,7 @@ fn main() {
     };
 
     macro_rules! check {
-        ($res:expr, $msg:expr,) => (
+        ($res:expr, $msg:expr,) => {
             match $res {
                 Ok(r) => r,
                 Err(e) => {
@@ -59,10 +73,10 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-        );
-        ($res:expr, $msg:expr) => (
+        };
+        ($res:expr, $msg:expr) => {
             check!($res, $msg,)
-        );
+        };
     }
 
     // Set up logging

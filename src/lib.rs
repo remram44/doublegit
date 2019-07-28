@@ -75,12 +75,8 @@ pub struct Ref {
 }
 
 impl Ref {
-    fn parse_remote_ref(
-        refname: &str,
-        remote: &str,
-    ) -> Result<Ref, Error> {
-        let idx = refname.find('/')
-            .ok_or(Error::git("Invalid remote ref"))?;
+    fn parse_remote_ref(refname: &str, remote: &str) -> Result<Ref, Error> {
+        let idx = refname.find('/').ok_or(Error::git("Invalid remote ref"))?;
         let remote_part = &refname[0..idx];
         if remote_part != remote {
             return Err(Error::git("Remote ref has invalid remote"));
@@ -231,7 +227,8 @@ mod tests {
                 remote: "origin".into(),
                 name: "master".into(),
                 tag: false,
-            }.fullname() as &str,
+            }
+            .fullname() as &str,
             "origin/master",
         );
         assert_eq!(
@@ -239,7 +236,8 @@ mod tests {
                 remote: "origin".into(),
                 name: "release".into(),
                 tag: true,
-            }.fullname() as &str,
+            }
+            .fullname() as &str,
             "release",
         );
     }

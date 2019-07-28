@@ -48,9 +48,9 @@ fn test_update() {
         let mut file = fs::File::create(origin.join("f")).unwrap();
         file.write_all(contents.as_bytes()).unwrap();
         assert!(process::Command::new("git")
-                .args(&["add", "f"])
-                .current_dir(&origin)
-                .status().unwrap().success());
+            .args(&["add", "f"])
+            .current_dir(&origin)
+            .status().unwrap().success());
     };
 
     let commit = |n: u32, msg: &str| {
@@ -69,13 +69,14 @@ fn test_update() {
     let mirror = test_dir.path().join("mirror");
     fs::create_dir(&mirror).unwrap();
     assert!(process::Command::new("git")
-            .arg("init")
-            .arg("--bare")
-            .current_dir(&mirror)
-            .status().unwrap().success());
+        .arg("init")
+        .arg("--bare")
+        .current_dir(&mirror)
+        .status().unwrap().success());
     {
         let mut file = fs::File::create(mirror.join("config")).unwrap();
-        file.write_all(b"\
+        file.write_all(
+            b"\
             [core]\n\
             \trepositoryformatversion = 0\n\
             \tfilemode = true\n\
@@ -130,9 +131,9 @@ fn test_update() {
 
     // Force-push branch br1 back
     assert!(process::Command::new("git")
-            .args(&["reset", "--keep", hash_one])
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["reset", "--keep", hash_one])
+        .current_dir(&origin)
+        .status().unwrap().success());
     crate::update_with_date(&mirror, time(4)).unwrap();
     check_db(
         &mirror,
@@ -150,13 +151,13 @@ fn test_update() {
 
     // Delete branch br1, create br2
     assert!(process::Command::new("git")
-            .args(&["checkout", "-b", "br2"])
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["checkout", "-b", "br2"])
+        .current_dir(&origin)
+        .status().unwrap().success());
     assert!(process::Command::new("git")
-            .args(&["branch", "-D", "br1"])
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["branch", "-D", "br1"])
+        .current_dir(&origin)
+        .status().unwrap().success());
     write("three");
     commit(5, "three");
     let hash_three = "54356c0e8c1cb663294d64157f517f980e5fbd98";
@@ -181,10 +182,10 @@ fn test_update() {
 
     // Create light-weight tag1
     assert!(process::Command::new("git")
-            .args(&["tag", "tag1"])
-            .arg(hash_one)
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["tag", "tag1"])
+        .arg(hash_one)
+        .current_dir(&origin)
+        .status().unwrap().success());
     crate::update_with_date(&mirror, time(7)).unwrap();
     check_db(
         &mirror,
@@ -203,11 +204,11 @@ fn test_update() {
 
     // Create annotated tag2
     assert!(process::Command::new("git")
-            .args(&["tag", "-a", "tag2", "-m", "tag2msg"])
-            .arg(hash_two)
-            .current_dir(&origin)
-            .envs(env(8))
-            .status().unwrap().success());
+        .args(&["tag", "-a", "tag2", "-m", "tag2msg"])
+        .arg(hash_two)
+        .current_dir(&origin)
+        .envs(env(8))
+        .status().unwrap().success());
     let hash_tag2_1 = "8fda1c0cfb4957e376fba4b53bf3ce080e25300c";
     crate::update_with_date(&mirror, time(8)).unwrap();
     check_db(
@@ -231,16 +232,16 @@ fn test_update() {
 
     // Move the tags
     assert!(process::Command::new("git")
-            .args(&["tag", "-f", "tag1"])
-            .arg(hash_two)
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["tag", "-f", "tag1"])
+        .arg(hash_two)
+        .current_dir(&origin)
+        .status().unwrap().success());
     assert!(process::Command::new("git")
-            .args(&["tag", "-a", "-f", "tag2", "-m", "tag2msg"])
-            .arg(hash_one)
-            .current_dir(&origin)
-            .envs(env(9))
-            .status().unwrap().success());
+        .args(&["tag", "-a", "-f", "tag2", "-m", "tag2msg"])
+        .arg(hash_one)
+        .current_dir(&origin)
+        .envs(env(9))
+        .status().unwrap().success());
     let hash_tag2_2 = "a64697beb90c35d198fd25f2985cbc9e1ac1783e";
     crate::update_with_date(&mirror, time(9)).unwrap();
     check_db(
@@ -263,9 +264,9 @@ fn test_update() {
 
     // Remove the tags
     assert!(process::Command::new("git")
-            .args(&["tag", "-d", "tag1", "tag2"])
-            .current_dir(&origin)
-            .status().unwrap().success());
+        .args(&["tag", "-d", "tag1", "tag2"])
+        .current_dir(&origin)
+        .status().unwrap().success());
     crate::update_with_date(&mirror, time(10)).unwrap();
     check_db(
         &mirror,
@@ -302,7 +303,8 @@ fn test_update() {
     }
     assert_eq!(
         tag_refs,
-        [hash_tag2_1, hash_tag2_2].into_iter()
+        [hash_tag2_1, hash_tag2_2]
+            .into_iter()
             .map(|h| format!("tag-{}", h))
             .collect(),
     );
@@ -314,15 +316,17 @@ fn check_db(
     tags: bool,
 ) {
     // Format the expected list: make the dates from numbers
-    let expected = expected.into_iter().map(
-        |(name, from_date, to_date, sha)|
-        (
-            name.to_string(),
-            timestr(*from_date),
-            to_date.map(timestr),
-            sha.to_string(),
-        )
-    ).collect::<Vec<_>>();
+    let expected = expected
+        .into_iter()
+        .map(|(name, from_date, to_date, sha)| {
+            (
+                name.to_string(),
+                timestr(*from_date),
+                to_date.map(timestr),
+                sha.to_string(),
+            )
+        })
+        .collect::<Vec<_>>();
 
     // Get the actual list from the database
     let conn = Connection::open(repo.join("gitarchive.sqlite3")).unwrap();
@@ -332,7 +336,7 @@ fn check_db(
         FROM refs
         WHERE tag=?
         ORDER BY from_date, name;
-        "
+        ",
     ).unwrap();
     let refs: Vec<_> = stmt.query_map(
         &[&tags as &ToSql],
@@ -356,9 +360,9 @@ fn check_refs(repo: &Path, expected: &[&str]) {
 
     // Get the actual list from Git
     let output = process::Command::new("git")
-            .arg("branch")
-            .current_dir(&repo)
-            .output().unwrap();
+        .arg("branch")
+        .current_dir(&repo)
+        .output().unwrap();
     assert!(output.status.success());
     let mut refs = HashSet::new();
     for line in output.stdout.split(|&b| b == b'\n') {

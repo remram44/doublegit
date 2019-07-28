@@ -28,10 +28,9 @@ pub fn serve(
 
     // Load templates
     let mut templates = Handlebars::new();
-    templates.register_template_string(
-        "browse.html",
-        include_str!("browse.html"),
-    ).unwrap();
+    templates
+        .register_template_string("browse.html", include_str!("browse.html"))
+        .unwrap();
     let templates = Arc::new(templates);
     let templates = warp::any().map(move || templates.clone());
 
@@ -57,7 +56,7 @@ pub fn serve(
 
 /// Redirects to main branch in latest snapshot
 fn index(
-    db: Arc<Mutex<Connection>>
+    db: Arc<Mutex<Connection>>,
 ) -> Result<Response, warp::reject::Rejection> {
     let db = db.lock().unwrap();
 
@@ -68,7 +67,7 @@ fn index(
             "
             SELECT name FROM refs
             WHERE name='master' AND tag=0 AND to_date IS NULL;
-            "
+            ",
         )?;
         let mut rows = stmt.query(rusqlite::NO_PARAMS)?;
         if rows.next().is_some() {
@@ -80,7 +79,7 @@ fn index(
                 SELECT name FROM refs
                 WHERE tag=0 AND to_date IS NULL
                 ORDER BY from_date DESC, name DESC;
-                "
+                ",
             )?;
             let mut rows = stmt.query(rusqlite::NO_PARAMS)?;
             if let Some(row) = rows.next() {
@@ -89,20 +88,22 @@ fn index(
                 panic!()
             }
         }
-    })().map_err(warp::reject::custom)?;
+    })()
+    .map_err(warp::reject::custom)?;
     info!("Redirecting to main branch: {}", head);
 
     // Redirect
     http::response::Response::builder()
         .status(StatusCode::FOUND)
         .header("Location", format!("/_/latest/{}", head))
-        .body(Body::empty()).map_err(warp::reject::custom)
+        .body(Body::empty())
+        .map_err(warp::reject::custom)
 }
 
 /// Redirects to main branch in given snapshot
 fn snapshot(
     date: String,
-    db: Arc<Mutex<Connection>>
+    db: Arc<Mutex<Connection>>,
 ) -> Result<Response, warp::reject::Rejection> {
     let date = match percent_encoding::percent_decode(date.as_bytes())
         .decode_utf8()
@@ -122,7 +123,7 @@ fn snapshot(
             WHERE name='master' AND tag=0
                 AND from_date <= ?
                 AND (to_date IS NULL OR to_date > ?);
-            "
+            ",
         )?;
         let mut rows = stmt.query(&[&date, &date])?;
         if rows.next().is_some() {
@@ -136,7 +137,7 @@ fn snapshot(
                     AND from_date <= ?
                     AND (to_date IS NULL OR to_date >?)
                 ORDER BY from_date DESC, name DESC;
-                "
+                ",
             )?;
             let mut rows = stmt.query(&[&date, &date])?;
             if let Some(row) = rows.next() {
@@ -145,14 +146,16 @@ fn snapshot(
                 panic!()
             }
         }
-    })().map_err(warp::reject::custom)?;
+    })()
+    .map_err(warp::reject::custom)?;
     info!("Redirecting to main branch at {}: {}", date, head);
 
     // Redirect
     http::response::Response::builder()
         .status(StatusCode::FOUND)
         .header("Location", format!("/_/{}/{}", date, head))
-        .body(Body::empty()).map_err(warp::reject::custom)
+        .body(Body::empty())
+        .map_err(warp::reject::custom)
 }
 
 fn get_snapshot(
@@ -224,7 +227,7 @@ fn get_branches(
             AND from_date <= ?
             AND (to_date IS NULL OR to_date > ?);
         ORDER BY name;
-        "
+        ",
     )?;
     let rows = stmt.query_map(
         &[date, date],
@@ -260,7 +263,8 @@ fn get_commits(
         .arg("--")
         .current_dir(repository)
         .stdin(process::Stdio::null())
-        .output().map_err(|_| "Error running Git")?;
+        .output()
+        .map_err(|_| "Error running Git")?;
     if !output.status.success() {
         error!("Error running `git log`: {}", output.status);
         return Err(format!("Error running `git log`: {}", output.status));
@@ -327,23 +331,23 @@ fn browse(
     };
 
     // Load commits
-    let commits = get_commits(
-        &repository,
-        &current_sha,
-        10,
-    ).map_err(warp::reject::custom)?;
+    let commits = get_commits(&repository, &current_sha, 10)
+        .map_err(warp::reject::custom)?;
 
     // Send response
-    templates.render(
-        "browse.html",
-        &json!({
-            "snapshot": {
-                "current": current, "prev": prev_date, "next": next_date,
-                "req": date,
-            },
-            "refname": refname,
-            "branches": branches,
-            "commits": commits,
-        }),
-    ).map_err(warp::reject::custom).map(warp::reply::html)
+    templates
+        .render(
+            "browse.html",
+            &json!({
+                "snapshot": {
+                    "current": current, "prev": prev_date, "next": next_date,
+                    "req": date,
+                },
+                "refname": refname,
+                "branches": branches,
+                "commits": commits,
+            }),
+        )
+        .map_err(warp::reject::custom)
+        .map(warp::reply::html)
 }

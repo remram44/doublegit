@@ -31,16 +31,22 @@ pub struct FetchOutput {
 
 pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
     let output = process::Command::new("git")
-        .args(&["fetch", "--prune", "origin",
-                "+refs/tags/*:refs/tags/*",
-                "+refs/heads/*:refs/remotes/origin/*"])
+        .args(&[
+            "fetch",
+            "--prune",
+            "origin",
+            "+refs/tags/*:refs/tags/*",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ])
         .current_dir(repository)
         .stdin(process::Stdio::null())
         .stdout(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
-        return Err(Error::Git(format!("`git fetch` returned {}",
-                                      output.status)));
+        return Err(Error::Git(format!(
+            "`git fetch` returned {}",
+            output.status
+        )));
     }
     parse_fetch_output(&output.stderr)
 }
@@ -80,7 +86,7 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
                         new.insert(ref_);
                     }
                 }
-                Operation::FastForward|Operation::Forced => {
+                Operation::FastForward | Operation::Forced => {
                     let ref_ = Ref::parse_remote_ref(to, remote)?;
                     info!("Updated branch {}", ref_.name);
                     changed.insert(ref_);
@@ -110,8 +116,10 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
                     changed.insert(ref_);
                 }
                 Operation::Reject => {
-                    return Err(Error::Git(format!("Error updating ref {}",
-                                                  to)));
+                    return Err(Error::Git(format!(
+                        "Error updating ref {}",
+                        to
+                    )));
                 }
                 Operation::Noop => {}
             }
@@ -130,8 +138,10 @@ pub fn get_sha(repository: &Path, refname: &str) -> Result<String, Error> {
         .stderr(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
-        return Err(Error::Git(format!("`git rev-parse` returned {}",
-                                      output.status)));
+        return Err(Error::Git(format!(
+            "`git rev-parse` returned {}",
+            output.status
+        )));
     }
     let sha = std::str::from_utf8(&output.stdout)
         .map_err(|_| Error::git("Non-utf8 sha?!"))?;
@@ -165,9 +175,10 @@ pub fn make_ref(
         .stdin(process::Stdio::null())
         .status()?;
     if !status.success() {
-        return Err(Error::Git(
-            format!("`git update-ref` returned {}", status)
-        ));
+        return Err(Error::Git(format!(
+            "`git update-ref` returned {}",
+            status
+        )));
     }
     Ok(())
 }
@@ -183,14 +194,17 @@ pub fn is_annotated_tag(
         .stderr(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
-        return Err(Error::Git(format!("`git cat-file -t` returned {}",
-                                      output.status)));
+        return Err(Error::Git(format!(
+            "`git cat-file -t` returned {}",
+            output.status
+        )));
     }
     Ok(output.stdout == b"tag\n")
 }
 
 pub fn included_branches(
-    repository: &Path, target: &str,
+    repository: &Path,
+    target: &str,
 ) -> Result<Vec<String>, Error> {
     let output = process::Command::new("git")
         .args(&["branch", "--merged", target])
@@ -199,13 +213,16 @@ pub fn included_branches(
         .stderr(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
-        return Err(Error::Git(format!("`git branch --merged` returned {}",
-                                      output.status)));
+        return Err(Error::Git(format!(
+            "`git branch --merged` returned {}",
+            output.status
+        )));
     }
     let mut refs = Vec::new();
     for line in output.stdout.split(|&b| b == b'\n') {
         let line = std::str::from_utf8(line)
-            .map_err(|_| Error::git("Non-utf8 branch name"))?.trim();
+            .map_err(|_| Error::git("Non-utf8 branch name"))?
+            .trim();
         if line.is_empty().not() {
             refs.push(line.into());
         }
@@ -224,13 +241,16 @@ pub fn including_branches(
         .stderr(process::Stdio::inherit())
         .output()?;
     if !output.status.success() {
-        return Err(Error::Git(format!("`git branch --contains` returned {}",
-                                      output.status)));
+        return Err(Error::Git(format!(
+            "`git branch --contains` returned {}",
+            output.status
+        )));
     }
     let mut refs = Vec::new();
     for line in output.stdout.split(|&b| b == b'\n') {
         let line = std::str::from_utf8(line)
-            .map_err(|_| Error::git("Non-utf8 branch name"))?.trim();
+            .map_err(|_| Error::git("Non-utf8 branch name"))?
+            .trim();
         if line.is_empty().not() {
             refs.push(line.into());
         }
