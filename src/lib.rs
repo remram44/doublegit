@@ -69,27 +69,26 @@ enum Operation {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ref {
-    remote: String,
     name: String,
     tag: bool,
 }
 
 impl Ref {
-    fn parse_remote_ref(refname: &str, remote: &str) -> Result<Ref, Error> {
+    fn parse_remote_ref(refname: &str) -> Result<Ref, Error> {
         let idx = refname.find('/').ok_or(Error::git("Invalid remote ref"))?;
-        let remote_part = &refname[0..idx];
-        if remote_part != remote {
+        let remote = &refname[0..idx];
+        if remote != "origin" {
             return Err(Error::git("Remote ref has invalid remote"));
         }
         let name = &refname[idx + 1..];
-        Ok(Ref { remote: remote.into(), name: name.into(), tag: false })
+        Ok(Ref { name: name.into(), tag: false })
     }
 
     fn fullname(&self) -> Cow<String> {
         if self.tag {
             Cow::Borrowed(&self.name)
         } else {
-            Cow::Owned(format!("{}/{}", self.remote, self.name))
+            Cow::Owned(format!("origin/{}", self.name))
         }
     }
 }
@@ -117,7 +116,6 @@ where
             db.execute(
                 "
                 CREATE TABLE refs(
-                    remote TEXT NOT NULL,
                     name TEXT NOT NULL,
                     from_date DATETIME NOT NULL,
                     to_date DATETIME NULL,
@@ -143,21 +141,21 @@ where
         tx.execute(
             "
             UPDATE refs SET to_date=?
-            WHERE remote=? AND name=?
+            WHERE name=?
             ORDER BY from_date DESC
             LIMIT 1;
             ",
-            &[&date, &ref_.remote, &ref_.name],
+            &[&date, &ref_.name],
         )?;
     }
     for ref_ in out.changed.iter().chain(out.new.iter()) {
         let sha = git::get_sha(repository, &ref_.fullname())?;
         tx.execute(
             "
-            INSERT INTO refs(remote, name, from_date, to_date, sha, tag)
-            VALUES(?, ?, ?, NULL, ?, ?);
+            INSERT INTO refs(name, from_date, to_date, sha, tag)
+            VALUES(?, ?, NULL, ?, ?);
             ",
-            &[&ref_.remote, &ref_.name, &date, &sha, &ref_.tag as &ToSql],
+            &[&ref_.name, &date, &sha, &ref_.tag as &ToSql],
         )?;
     }
 
@@ -209,22 +207,20 @@ mod tests {
     #[test]
     fn test_ref_parse() {
         assert_eq!(
-            Ref::parse_remote_ref("origin/master", "origin").unwrap(),
+            Ref::parse_remote_ref("origin/master").unwrap(),
             Ref {
-                remote: "origin".into(),
                 name: "master".into(),
                 tag: false,
             },
         );
-        assert!(Ref::parse_remote_ref("origin/master", "upstream").is_err());
-        assert!(Ref::parse_remote_ref("master", "origin").is_err());
+        assert!(Ref::parse_remote_ref("upstream/master").is_err());
+        assert!(Ref::parse_remote_ref("master").is_err());
     }
 
     #[test]
     fn test_ref_fullname() {
         assert_eq!(
             &Ref {
-                remote: "origin".into(),
                 name: "master".into(),
                 tag: false,
             }
@@ -233,7 +229,6 @@ mod tests {
         );
         assert_eq!(
             &Ref {
-                remote: "origin".into(),
                 name: "release".into(),
                 tag: true,
             }

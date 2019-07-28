@@ -57,7 +57,6 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
             r"^ ([+t*! -]) +([^ ]+|\[[^\]]+\]) +([^ ]+) +-> +([^ ]+)(?: +(.+))?$"
         ).unwrap();
     }
-    let remote = "origin";
     let mut new = HashSet::new();
     let mut changed = HashSet::new();
     let mut removed = HashSet::new();
@@ -74,41 +73,38 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
                 Operation::New => {
                     if !to.contains('/') { // tag
                         let ref_ = Ref {
-                            remote: remote.into(),
                             name: to.into(),
                             tag: true,
                         };
                         info!("New tag {}", ref_.name);
                         new.insert(ref_);
                     } else {
-                        let ref_ = Ref::parse_remote_ref(to, remote)?;
+                        let ref_ = Ref::parse_remote_ref(to)?;
                         info!("New branch {}", ref_.name);
                         new.insert(ref_);
                     }
                 }
                 Operation::FastForward | Operation::Forced => {
-                    let ref_ = Ref::parse_remote_ref(to, remote)?;
+                    let ref_ = Ref::parse_remote_ref(to)?;
                     info!("Updated branch {}", ref_.name);
                     changed.insert(ref_);
                 }
                 Operation::Pruned => {
                     if !to.contains('/') { // tag
                         let ref_ = Ref {
-                            remote: remote.into(),
                             name: to.into(),
                             tag: true,
                         };
                         info!("Pruned tag {}", ref_.name);
                         removed.insert(ref_);
                     } else {
-                        let ref_ = Ref::parse_remote_ref(to, remote)?;
+                        let ref_ = Ref::parse_remote_ref(to)?;
                         info!("Pruned branch {}", ref_.name);
                         removed.insert(ref_);
                     }
                 }
                 Operation::Tag => {
                     let ref_ = Ref {
-                        remote: remote.into(),
                         name: to.into(),
                         tag: true,
                     };
@@ -304,7 +300,6 @@ From github.com:remram44/doublegit
             output.new,
             [
                 Ref {
-                    remote: "origin".into(),
                     name: "master".into(),
                     tag: false,
                 },
@@ -314,7 +309,6 @@ From github.com:remram44/doublegit
             output.changed,
             [
                 Ref {
-                    remote: "origin".into(),
                     name: "devel".into(),
                     tag: false,
                 },
@@ -324,7 +318,6 @@ From github.com:remram44/doublegit
             output.removed,
             [
                 Ref {
-                    remote: "origin".into(),
                     name: "old".into(),
                     tag: false,
                 },
