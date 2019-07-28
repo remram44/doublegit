@@ -336,12 +336,12 @@ fn check_db(
     ).unwrap();
     let refs: Vec<_> = stmt.query_map(
         &[&tags as &ToSql],
-        |row| Ok((
-            row.get::<_, String>(0).unwrap(),
-            row.get::<_, String>(1).unwrap(),
-            row.get::<_, Option<String>>(2).unwrap(),
-            row.get::<_, String>(3).unwrap(),
-        )),
+        |row| (
+            row.get::<_, String>(0),
+            row.get::<_, String>(1),
+            row.get::<_, Option<String>>(2),
+            row.get::<_, String>(3),
+        ),
     ).unwrap().map(Result::unwrap).collect();
 
     // Assert
