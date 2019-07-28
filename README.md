@@ -1,7 +1,7 @@
 What is this?
 =============
 
-This is a small tool that does ``git fetch`` then writes down all ref updates in a SQLite3 database. It also creates refs to make sure no commit gets garbage collected.
+This is a small tool that does `git fetch` then writes down all ref updates in a SQLite3 database. It also creates refs to make sure no commit gets garbage collected.
 
 What for?
 =========
@@ -22,18 +22,24 @@ How to use
 
 First, create a bare repo::
 
-    $ mkdir my-repo-backup && cd my-repo-backup
-    $ git init --bare
+```
+$ mkdir my-repo-backup && cd my-repo-backup
+$ git init --bare
+```
 
-Set up one (or multiple) remotes to fetch from::
+Set up a remote `origin`:
 
-    $ git remote add origin https://github.com/remram44/doublegit.git
+```
+$ git remote add origin https://github.com/remram44/doublegit.git
+```
 
-Then simply run doublegit once in a while::
+Then simply run doublegit once in a while:
 
-    $ python3 doublegit.py /path/to/my-repo-backup
+```
+$ python3 doublegit.py /path/to/my-repo-backup
+```
 
-You can then query ``gitarchive.sqlite3`` for branch updates or for the position of the branches at a given point in time.
+You can then query `gitarchive.sqlite3` for branch updates or for the position of the branches at a given point in time.
 
 Next steps?
 ===========
@@ -41,5 +47,3 @@ Next steps?
 I think it would be cool if this tool could record GitHub/GitLab/... API events too; things like issues/merge requests/comments.
 
 It could also automatically backup all your starred repos.
-
-This also doesn't support tags yet.
