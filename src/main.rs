@@ -35,7 +35,11 @@ fn main() {
                                   .short("-p")
                                   .help("Set the port number for the server")
                                   .takes_value(true)
-                                  .default_value("6617")));
+                                  .default_value("6617"))
+                             .arg(Arg::with_name("repository")
+                                  .help("Path to repository")
+                                  .required(true)
+                                  .takes_value(true)));
 
     let mut cli = cli;
     let matches = match cli.get_matches_from_safe_borrow(env::args_os()) {
@@ -45,6 +49,21 @@ fn main() {
             std::process::exit(2);
         }
     };
+
+    macro_rules! check {
+        ($res:expr, $msg:expr,) => (
+            match $res {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("{}: {}", $msg, e);
+                    std::process::exit(1);
+                }
+            }
+        );
+        ($res:expr, $msg:expr) => (
+            check!($res, $msg,)
+        );
+    }
 
     // Set up logging
     {
@@ -70,25 +89,22 @@ fn main() {
             let s_matches = matches.subcommand_matches("update").unwrap();
             let repository = s_matches.value_of_os("repository").unwrap();
             let repository = Path::new(repository);
-            match doublegit::update(repository) {
-                Ok(()) => {},
-                Err(e) => {
-                    eprintln!("{}", e);
-                    std::process::exit(1);
-                }
-            }
+            check!(doublegit::update(repository), "Error updating");
         }
         Some("web") => {
             let s_matches = matches.subcommand_matches("web").unwrap();
+            let repository = s_matches.value_of_os("repository").unwrap();
+            let repository = Path::new(repository);
             let host = s_matches.value_of("host").unwrap();
-            let port = match s_matches.value_of("port").unwrap().parse() {
-                Ok(p) => p,
-                Err(e) => {
-                    eprintln!("Invalid port number: {}", e);
-                    std::process::exit(2);
-                }
-            };
-            doublegit::web::serve(host, port);
+            let host = check!(host.parse(), "Invalid address");
+            let port = check!(
+                s_matches.value_of("port").unwrap().parse(),
+                "Invalid port number",
+            );
+            check!(
+                doublegit::web::serve(repository, host, port),
+                "Error running server",
+            );
         }
         _ => {
             cli.print_help().expect("Can't print help");
