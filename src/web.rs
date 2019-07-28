@@ -2,7 +2,8 @@ use handlebars::Handlebars;
 use http::StatusCode;
 use hyper::Body;
 use rusqlite::Connection;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::process;
 use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 use warp::path;
@@ -20,6 +21,10 @@ pub fn serve(
     let db = Connection::open(db_path)?;
     let db = Arc::new(Mutex::new(db));
     let db = warp::any().map(move || db.clone());
+
+    // Repository path
+    let repo_path = Arc::new(repository.to_path_buf());
+    let repo_path = warp::any().map(move || repo_path.clone());
 
     // Load templates
     let mut templates = Handlebars::new();
@@ -42,7 +47,7 @@ pub fn serve(
             .and(db.clone()).and_then(snapshot))
         // Browse view, shows a branch in a snapshot
         .or(path!("_" / String / String).and(path::end())
-            .and(db).and(templates).and_then(browse));
+            .and(db).and(repo_path).and(templates).and_then(browse));
 
     println!("\n    Starting server on {}:{}\n", host, port);
     warp::serve(routes).run((host, port));
@@ -236,11 +241,57 @@ fn get_branches(
     Ok(branches)
 }
 
+#[derive(Serialize)]
+struct Commit {
+    sha: String,
+    author: String,
+    date: String,
+    message: String,
+}
+
+fn get_commits(
+    repository: &Path,
+    target: &str,
+    number: usize,
+) -> Result<Vec<Commit>, String> {
+    let output = process::Command::new("git")
+        .args(&["log", "--format=short"])
+        .arg(format!("{0}~{1}..{0}", target, number))
+        .arg("--")
+        .current_dir(repository)
+        .stdin(process::Stdio::null())
+        .output().map_err(|_| "Error running Git")?;
+    if !output.status.success() {
+        error!("Error running `git log`: {}", output.status);
+        return Err(format!("Error running `git log`: {}", output.status));
+    }
+    let mut commits = Vec::with_capacity(number);
+    for line in output.stdout.split(|&b| b == b'\n') {
+        let line = String::from_utf8_lossy(line);
+        if line.starts_with("commit ") {
+            commits.push(Commit {
+                sha: line[7..].into(),
+                author: String::new(),
+                date: String::new(),
+                message: String::new(),
+            });
+        } else if line.starts_with("Author: ") {
+            commits.last_mut().unwrap().author = line.trim().into();
+        } else if line.starts_with("Date: ") {
+            commits.last_mut().unwrap().date = line.trim().into();
+        } else if line.starts_with("    ") {
+            commits.last_mut().unwrap().message = line.trim().into();
+        }
+    }
+    Ok(commits)
+}
+
 /// Browser view
 fn browse(
     date: String,
     refname: String,
     db: Arc<Mutex<Connection>>,
+    repository: Arc<PathBuf>,
     templates: Arc<Handlebars>,
 ) -> Result<impl Reply, warp::reject::Rejection> {
     let date = match percent_encoding::percent_decode(date.as_bytes())
@@ -266,6 +317,21 @@ fn browse(
     // Load branches
     let mut branches = get_branches(&current, &mut db)
         .map_err(warp::reject::custom)?;
+    let current_sha = {
+        let idx = branches.binary_search_by(|br| br.0.cmp(&refname))
+            .map_err(|_| {
+                warn!("Requested branch does not exist");
+                warp::reject::not_found()
+            })?;
+        branches.remove(idx).1
+    };
+
+    // Load commits
+    let commits = get_commits(
+        &repository,
+        &current_sha,
+        10,
+    ).map_err(warp::reject::custom)?;
 
     // Send response
     templates.render(
@@ -277,6 +343,7 @@ fn browse(
             },
             "refname": refname,
             "branches": branches,
+            "commits": commits,
         }),
     ).map_err(warp::reject::custom).map(warp::reply::html)
 }

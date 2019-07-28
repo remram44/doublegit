@@ -33,5 +33,11 @@
       </p>
     </div>
     <p>Branch: {{ refname }} ({{#each branches}}<a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a> {{/each}})</p>
+    <p>Latest commits:</p>
+    <ul>
+      {{#each commits}}
+      <li>{{ message }}</li>
+      {{/each}}
+    </ul>
   </body>
 </html>

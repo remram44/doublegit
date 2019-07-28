@@ -3,6 +3,7 @@ extern crate chrono;
 #[macro_use] extern crate log;
 extern crate regex;
 extern crate rusqlite;
+#[cfg(feature = "web")] #[macro_use] extern crate serde;
 #[cfg(feature = "web")] #[macro_use] extern crate serde_json;
 #[cfg(test)] extern crate tempfile;
 
