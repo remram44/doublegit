@@ -1,3 +1,4 @@
+use handlebars::Handlebars;
 use http::StatusCode;
 use hyper::Body;
 use rusqlite::Connection;
@@ -9,21 +10,33 @@ use warp::reply::Response;
 
 use crate::Error;
 
-const INDEX: &'static str = include_str!("index.html");
-
 pub fn serve(
     repository: &Path,
     host: std::net::IpAddr,
     port: u16,
 ) -> Result<(), Error> {
+    // Connect to database
     let db_path = repository.join("gitarchive.sqlite3");
     let db = Connection::open(db_path)?;
     let db = Arc::new(Mutex::new(db));
     let db = warp::any().map(move || db.clone());
 
+    // Load templates
+    let mut templates = Handlebars::new();
+    templates.register_template_string(
+        "browse.html",
+        include_str!("browse.html"),
+    ).unwrap();
+    let templates = Arc::new(templates);
+    let templates = warp::any().map(move || templates.clone());
+
     let routes =
-        path::end().and(db.clone()).and_then(index)
-        .or(path!("_" / String / String).and(db).map(browse));
+        // Index, redirects to a branch in the latest snapshot
+        path::end()
+            .and(db.clone()).and_then(index)
+        // Browse view, shows a branch in a snapshot
+        .or(path!("_" / String / String)
+            .and(db).and(templates).and_then(browse));
 
     println!("\n    Starting server on {}:{}\n", host, port);
     warp::serve(routes).run((host, port));
@@ -79,6 +92,8 @@ fn browse(
     time: String,
     refname: String,
     db: Arc<Mutex<Connection>>,
-) -> &'static str {
-    INDEX
+    templates: Arc<Handlebars>,
+) -> Result<String, warp::reject::Rejection> {
+    templates.render("browse.html", &json!({"time": time, "refname": refname}))
+        .map_err(warp::reject::custom)
 }
