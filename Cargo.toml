@@ -21,7 +21,8 @@ env_logger = "0.6"
 handlebars = {version = "2.0", optional = true}
 http = {version = "0.1.18", optional = true}
 hyper = {version = "0.12.33", optional = true}
-serde_json = {version = "*", optional = true}
+percent-encoding = {version = "1.0", optional = true}
+serde_json = {version = "1.0", optional = true}
 warp = {version = "0.1.18", optional = true}
 
 [dev-dependencies]
@@ -29,4 +30,4 @@ tempfile = "3.0.8"
 
 [features]
 default = ["web"]
-web = ["handlebars", "http", "hyper", "serde_json", "warp"]
+web = ["handlebars", "http", "hyper", "percent-encoding", "serde_json", "warp"]
