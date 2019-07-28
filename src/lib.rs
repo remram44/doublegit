@@ -13,9 +13,9 @@ use std::path::Path;
 use std::time::SystemTime;
 
 mod git;
+#[cfg(feature = "web")] pub mod web;
 
-#[cfg(test)]
-mod tests_integration;
+#[cfg(test)] mod tests_integration;
 
 #[derive(Debug)]
 pub enum Error {

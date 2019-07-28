@@ -8,7 +8,7 @@ use std::path::Path;
 
 fn main() {
     // Parse command line
-    let mut cli = App::new("doublegit")
+    let cli = App::new("doublegit")
         .bin_name("doublegit")
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
@@ -23,6 +23,21 @@ fn main() {
                          .help("Path to repository")
                          .required(true)
                          .takes_value(true)));
+    #[cfg(feature = "web")]
+    let cli = cli.subcommand(SubCommand::with_name("web")
+                             .about("Open the repository history web page")
+                             .arg(Arg::with_name("host")
+                                  .short("-h")
+                                  .help("Set the host to bind the server to")
+                                  .takes_value(true)
+                                  .default_value("127.0.0.1"))
+                             .arg(Arg::with_name("port")
+                                  .short("-p")
+                                  .help("Set the port number for the server")
+                                  .takes_value(true)
+                                  .default_value("6617")));
+
+    let mut cli = cli;
     let matches = match cli.get_matches_from_safe_borrow(env::args_os()) {
         Ok(m) => m,
         Err(e) => {
@@ -62,6 +77,18 @@ fn main() {
                     std::process::exit(1);
                 }
             }
+        }
+        Some("web") => {
+            let s_matches = matches.subcommand_matches("web").unwrap();
+            let host = s_matches.value_of("host").unwrap();
+            let port = match s_matches.value_of("port").unwrap().parse() {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("Invalid port number: {}", e);
+                    std::process::exit(2);
+                }
+            };
+            doublegit::web::serve(host, port);
         }
         _ => {
             cli.print_help().expect("Can't print help");
