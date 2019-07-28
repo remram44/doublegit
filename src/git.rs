@@ -61,10 +61,7 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
         if let Some(m) = _RE_FETCH.captures(line) {
             info!("> {}", line);
             let op = m.get(1).map_or("", |m| m.as_str());
-            let summary = m.get(2).map_or("", |m| m.as_str());
-            let from = m.get(3).map_or("", |m| m.as_str());
             let to = m.get(4).map_or("", |m| m.as_str());
-            let reason = m.get(5).map_or("", |m| m.as_str());
 
             let op = parse_operation(op)?;
             match op {
@@ -581,7 +578,7 @@ From github.com:remram44/doublegit
                 .args(&["tag", "-d", "tag1", "tag2"])
                 .current_dir(&origin)
                 .status().unwrap().success());
-        crate::update_with_date(&mirror, time(10));
+        crate::update_with_date(&mirror, time(10)).unwrap();
         check_db(
             &mirror,
             &[
