@@ -7,6 +7,7 @@ extern crate rusqlite;
 #[cfg(feature = "web")] #[macro_use] extern crate serde_json;
 #[cfg(test)] extern crate tempfile;
 
+mod apis;
 mod git;
 #[cfg(feature = "web")] pub mod web;
 
