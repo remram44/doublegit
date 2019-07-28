@@ -222,6 +222,7 @@ pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
 mod tests {
     use rusqlite::Connection;
     use rusqlite::types::ToSql;
+    use std::collections::HashSet;
     use std::fs;
     use std::io::Write;
     use std::ops::Not;
@@ -382,6 +383,10 @@ From github.com:remram44/doublegit
             ],
             false,
         );
+        check_refs(
+            &mirror,
+            &["keep-ae79568054d9fa2e4956968310655e9bcbd60e2f"],
+        );
 
         // Update branch br1
         write("two");
@@ -394,6 +399,10 @@ From github.com:remram44/doublegit
                 ("br1", 3, None, "8dcda34bbae83d2e3d856cc5dbc356ee6e947619"),
             ],
             false,
+        );
+        check_refs(
+            &mirror,
+            &["keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619"],
         );
 
         // Force-push branch br1 back
@@ -410,6 +419,10 @@ From github.com:remram44/doublegit
                 ("br1", 4, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
             ],
             false,
+        );
+        check_refs(
+            &mirror,
+            &["keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619"],
         );
 
         // Delete branch br1, create br2
@@ -434,6 +447,13 @@ From github.com:remram44/doublegit
             ],
             false,
         );
+        check_refs(
+            &mirror,
+            &[
+                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+            ],
+        );
 
         // Create light-weight tag1
         assert!(process::Command::new("git")
@@ -448,6 +468,14 @@ From github.com:remram44/doublegit
                 ("tag1", 7, None, "ae79568054d9fa2e4956968310655e9bcbd60e2f"),
             ],
             true,
+        );
+        check_refs(
+            &mirror,
+            &[
+                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+                "keep-ae79568054d9fa2e4956968310655e9bcbd60e2f",
+            ],
         );
 
         // Create annotated tag2
@@ -465,6 +493,13 @@ From github.com:remram44/doublegit
                 ("tag2", 8, None, "8fda1c0cfb4957e376fba4b53bf3ce080e25300c"),
             ],
             true,
+        );
+        check_refs(
+            &mirror,
+            &[
+                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+                "keep-8fda1c0cfb4957e376fba4b53bf3ce080e25300c",
+            ],
         );
 
         // Move the tags
@@ -490,6 +525,13 @@ From github.com:remram44/doublegit
             ],
             true,
         );
+        check_refs(
+            &mirror,
+            &[
+                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+            ],
+        );
 
         // Remove the tags
         assert!(process::Command::new("git")
@@ -506,6 +548,13 @@ From github.com:remram44/doublegit
                 ("tag2", 9, Some(10), "a64697beb90c35d198fd25f2985cbc9e1ac1783e"),
             ],
             true,
+        );
+        check_refs(
+            &mirror,
+            &[
+                "keep-54356c0e8c1cb663294d64157f517f980e5fbd98",
+                "keep-8dcda34bbae83d2e3d856cc5dbc356ee6e947619",
+            ],
         );
     }
 
@@ -546,6 +595,24 @@ From github.com:remram44/doublegit
         ).unwrap().map(Result::unwrap).collect();
 
         // Assert
+        assert_eq!(refs, expected);
+    }
+
+    fn check_refs(repo: &Path, expected: &[&str]) {
+        let expected = expected.into_iter().cloned().collect();
+        let output = process::Command::new("git")
+                .arg("branch")
+                .current_dir(&repo)
+                .output().unwrap();
+        assert!(output.status.success());
+        let mut refs = HashSet::new();
+        for line in output.stdout.split(|&b| b == b'\n') {
+            let line = std::str::from_utf8(line).unwrap().trim();
+            if line.is_empty().not() {
+                refs.insert(line);
+            }
+        }
+
         assert_eq!(refs, expected);
     }
 }
