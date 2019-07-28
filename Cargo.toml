@@ -32,3 +32,9 @@ tempfile = "3.0.8"
 [features]
 default = ["web"]
 web = ["handlebars", "http", "hyper", "percent-encoding", "serde", "serde_json", "warp"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
