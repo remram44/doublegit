@@ -30,13 +30,13 @@ $ git init --bare
 Set up a remote `origin`:
 
 ```
-$ git remote add origin https://github.com/remram44/doublegit.git
+$ git remote add origin https://github.com/my-name/my-repo.git
 ```
 
 Then simply run doublegit once in a while:
 
 ```
-$ python3 doublegit.py /path/to/my-repo-backup
+$ doublegit /path/to/my-repo-backup
 ```
 
 You can then query `gitarchive.sqlite3` for branch updates or for the position of the branches at a given point in time.
@@ -47,3 +47,5 @@ Next steps?
 I think it would be cool if this tool could record GitHub/GitLab/... API events too; things like issues/merge requests/comments.
 
 It could also automatically backup all your starred repos.
+
+Some kind of query interface needs to be written (I'm thinking web).
