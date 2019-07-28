@@ -163,23 +163,35 @@ where
     // Create refs to prevent garbage collection
     for ref_ in out.changed.iter().chain(out.new.iter()) {
         let sha = git::get_sha(repository, &ref_.fullname())?;
-        git::make_branch(repository, &format!("keep-{}", sha), &sha)?;
-        // FIXME: If ref_ is an annotated tag, does branch point to the tag or
-        // the commit? (methinks tag)
+        if ref_.tag && git::is_annotated_tag(repository, &sha)? {
+            info!("{:?} making ref {}", ref_, sha);
+            git::make_ref(
+                repository,
+                &format!("refs/kept-tags/tag-{}", sha),
+                &sha,
+            )?;
+        } else {
+            info!("{:?} making branch {}", ref_, sha);
+            git::make_branch(repository, &format!("keep-{}", sha), &sha)?;
+        }
     }
 
     // Remove superfluous branches
     for ref_ in out.changed.iter().chain(out.new.iter()) {
         let sha = git::get_sha(repository, &ref_.fullname())?;
         let keeper = format!("keep-{}", sha);
+        // Parents of this branch are superfluous
         for br in git::included_branches(repository, &sha)? {
             if br != keeper {
                 git::delete_branch(repository, &br)?;
             }
         }
+        // This branch is superfluous if it is included in others
         // If the ref is an annotated tag, this wrongly checks if the commit
-        // is included in other branches
-        if !ref_.tag && git::including_branches(repository, &sha)?.len() > 1 {
+        // is included in other branches, so skip on annotated tags
+        if !(ref_.tag && git::is_annotated_tag(repository, &sha)?)
+            && git::including_branches(repository, &sha)?.len() > 1
+        {
             git::delete_branch(repository, &keeper)?;
         }
     }

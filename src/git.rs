@@ -157,6 +157,41 @@ pub fn make_branch(
     Ok(())
 }
 
+pub fn make_ref(
+    repository: &Path,
+    name: &str,
+    sha: &str,
+) -> Result<(), Error> {
+    let status = process::Command::new("git")
+        .args(&["update-ref", name, sha])
+        .current_dir(repository)
+        .stdin(process::Stdio::null())
+        .status()?;
+    if !status.success() {
+        return Err(Error::Git(
+            format!("`git update-ref` returned {}", status)
+        ));
+    }
+    Ok(())
+}
+
+pub fn is_annotated_tag(
+    repository: &Path,
+    target: &str,
+) -> Result<bool, Error> {
+    let output = process::Command::new("git")
+        .args(&["cat-file", "-t", target])
+        .current_dir(repository)
+        .stdin(process::Stdio::null())
+        .stderr(process::Stdio::inherit())
+        .output()?;
+    if !output.status.success() {
+        return Err(Error::Git(format!("`git cat-file -t` returned {}",
+                                      output.status)));
+    }
+    Ok(output.stdout == b"tag\n")
+}
+
 pub fn included_branches(
     repository: &Path, target: &str,
 ) -> Result<Vec<String>, Error> {
@@ -211,6 +246,7 @@ pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
         .args(&["branch", "-D", name])
         .current_dir(repository)
         .stdin(process::Stdio::null())
+        .stdout(process::Stdio::null())
         .status()?;
     if !status.success() {
         return Err(Error::Git(format!("`git branch -D` returned {}", status)));
@@ -230,7 +266,7 @@ mod tests {
     use std::process;
 
     use crate::{Operation, Ref};
-    use crate::git::{parse_operation, parse_fetch_output};
+    use crate::git::{get_sha, parse_operation, parse_fetch_output};
 
     #[test]
     fn test_parse_operation() {
@@ -475,7 +511,6 @@ From github.com:remram44/doublegit
         check_refs(
             &mirror,
             &[
-                hash_one,
                 hash_two,
                 hash_three,
             ],
@@ -502,7 +537,6 @@ From github.com:remram44/doublegit
             &mirror,
             &[
                 hash_three,
-                hash_tag2_1,
             ],
         );
 
@@ -565,6 +599,28 @@ From github.com:remram44/doublegit
                 hash_three,
             ],
         );
+
+        // Check the non-branch refs keeping the tags alive are there
+        let output = process::Command::new("git")
+            .arg("show-ref")
+            .current_dir(&mirror)
+            .output().unwrap();
+        assert!(output.status.success());
+        let mut tag_refs = HashSet::new();
+        for line in output.stdout.split(|&b| b == b'\n') {
+            if line.is_empty().not() {
+                let line = std::str::from_utf8(&line[41..]).unwrap();
+                if line.starts_with("refs/kept-tags/") {
+                    tag_refs.insert(line[15..].into());
+                }
+            }
+        }
+        assert_eq!(
+            tag_refs,
+            [hash_tag2_1, hash_tag2_2].into_iter()
+                .map(|h| format!("tag-{}", h))
+                .collect(),
+        );
     }
 
     fn check_db(
@@ -624,6 +680,11 @@ From github.com:remram44/doublegit
             let line = std::str::from_utf8(line).unwrap().trim();
             if line.is_empty().not() {
                 refs.insert(line.into());
+
+                // Check that 'keep-abc' points to 'abc'
+                if line.starts_with("keep-") {
+                    assert_eq!(&line[5..], get_sha(repo, line).unwrap());
+                }
             }
         }
 
