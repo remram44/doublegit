@@ -2,9 +2,36 @@
 <html>
   <head>
     <title>Doublegit</title>
+    <style type="text/css">
+#snapshot-nav {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+}
+    </style>
   </head>
   <body>
-    <p>Snapshot: {{ snapshot }}</p>
-    <p>Branch: {{ refname }}</p>
+    <div id="snapshot-nav">
+      <p>
+        {{#if snapshot.prev}}
+        <a href="/_/{{ snapshot.prev }}">
+        {{else}}
+        <a class="no-more-page">
+        {{/if}}
+          &lt;- Prev
+        </a>
+      </p>
+      <p>Snapshot: {{ snapshot.current }}</p>
+      <p>
+        {{#if snapshot.next}}
+        <a href="/_/{{ snapshot.next }}">
+        {{else}}
+        <a class="no-more-page">
+        {{/if}}
+          Next -&gt;
+        </a>
+      </p>
+    </div>
+    <p>Branch: {{ refname }} ({{#each branches}}<a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a> {{/each}})</p>
   </body>
 </html>

@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use warp::{self, Filter};
 use warp::path;
-use warp::reply::Response;
+use warp::reply::{Reply, Response};
 
 use crate::Error;
 
@@ -34,8 +34,14 @@ pub fn serve(
         // Index, redirects to a branch in the latest snapshot
         path::end()
             .and(db.clone()).and_then(index)
+        // Repo alone ("_"), same as index
+        .or(path!("_").and(path::end())
+            .and(db.clone()).and_then(index))
+        // Snapshot without branch, redirect to a branch
+        .or(path!("_" / String).and(path::end())
+            .and(db.clone()).and_then(snapshot))
         // Browse view, shows a branch in a snapshot
-        .or(path!("_" / String / String)
+        .or(path!("_" / String / String).and(path::end())
             .and(db).and(templates).and_then(browse));
 
     println!("\n    Starting server on {}:{}\n", host, port);
@@ -48,9 +54,10 @@ pub fn serve(
 fn index(
     db: Arc<Mutex<Connection>>
 ) -> Result<Response, warp::reject::Rejection> {
+    let db = db.lock().unwrap();
+
     // First we have to find a suitable branch
     let head = (|| -> Result<String, rusqlite::Error> {
-        let db = db.lock().unwrap();
         // If "master" exists, use that
         let mut stmt = db.prepare(
             "
@@ -87,42 +94,113 @@ fn index(
         .body(Body::empty()).map_err(warp::reject::custom)
 }
 
+/// Redirects to main branch in given snapshot
+fn snapshot(
+    date: String,
+    db: Arc<Mutex<Connection>>
+) -> Result<Response, warp::reject::Rejection> {
+    let date = match percent_encoding::percent_decode(date.as_bytes())
+        .decode_utf8()
+    {
+        Ok(s) => s,
+        Err(_) => return Err(warp::reject::not_found()),
+    };
+
+    let db = db.lock().unwrap();
+
+    // First we have to find the main branch
+    let head = (|| -> Result<String, rusqlite::Error> {
+        // If "master" exists, use that
+        let mut stmt = db.prepare(
+            "
+            SELECT name FROM refs
+            WHERE name='master' AND tag=0
+                AND from_date <= ?
+                AND (to_date IS NULL OR to_date > ?);
+            "
+        )?;
+        let mut rows = stmt.query(&[&date, &date])?;
+        if rows.next().is_some() {
+            Ok("master".into())
+        } else {
+            // Otherwise, use whatever branch was last updated
+            let mut stmt = db.prepare(
+                "
+                SELECT name FROM refs
+                WHERE tag=0
+                    AND from_date <= ?
+                    AND (to_date IS NULL OR to_date >?)
+                ORDER BY from_date DESC, name DESC;
+                "
+            )?;
+            let mut rows = stmt.query(&[&date, &date])?;
+            if let Some(row) = rows.next() {
+                Ok(row?.get(0))
+            } else {
+                panic!()
+            }
+        }
+    })().map_err(warp::reject::custom)?;
+    info!("Redirecting to main branch at {}: {}", date, head);
+
+    // Redirect
+    http::response::Response::builder()
+        .status(StatusCode::FOUND)
+        .header("Location", format!("/_/{}/{}", date, head))
+        .body(Body::empty()).map_err(warp::reject::custom)
+}
+
 fn get_snapshot(
-    time: &str,
+    date: &str,
     db: &mut Connection,
-) -> Result<Option<String>, rusqlite::Error> {
-    let date: Result<Option<String>, _> = if time == "latest" {
+) -> Result<(Option<String>, Option<String>, Option<String>), rusqlite::Error>
+{
+    let date: Result<(Option<String>, Option<String>, Option<String>), _> =
+        if date == "latest"
+    {
         db.query_row(
             "
-            SELECT MAX(date)
-            FROM (
-                SELECT MAX(from_date) AS date FROM refs
-                UNION ALL
-                SELECT MAX(to_date) AS date FROM refs
-            );
+            WITH dates AS (
+                SELECT from_date AS date FROM refs
+                UNION
+                SELECT to_date AS date FROM refs
+            )
+            SELECT
+                (SELECT date FROM dates
+                 ORDER BY date DESC LIMIT 1) as current,
+                (SELECT date FROM dates
+                 ORDER BY date DESC LIMIT 1 OFFSET 1) AS prev,
+                NULL AS next;
             ",
             rusqlite::NO_PARAMS,
-            |row| row.get(0),
+            |row| (row.get(0), row.get(1), row.get(2)),
         )
     } else {
         db.query_row(
             "
-            SELECT MAX(date)
-            FROM (
+            WITH dates AS (
                 SELECT from_date AS date FROM refs
-                WHERE from_date <= ?
-                UNION ALL
-                SELECT MAX(to_date) AS date FROM refs
-                WHERE to_date <= ?
-            );
+                UNION
+                SELECT to_date AS date FROM refs
+            )
+            SELECT
+                (SELECT date FROM dates
+                 WHERE date <= ?
+                 ORDER BY date DESC LIMIT 1) as current,
+                (SELECT date FROM dates
+                 WHERE date <= ?
+                 ORDER BY date DESC LIMIT 1 OFFSET 1) AS prev,
+                (SELECT date FROM dates
+                 WHERE date > ?
+                 ORDER BY date LIMIT 1) as next;
             ",
-            &[&time, &time],
-            |row| row.get(0),
+            &[&date, &date, &date],
+            |row| (row.get(0), row.get(1), row.get(2)),
         )
     };
     match date {
-        Ok(maybe_date) => Ok(maybe_date),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Ok(triple) => Ok(triple),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok((None, None, None)),
         Err(e) => {
             error!("Error: {}", e);
             Err(e)
@@ -130,14 +208,42 @@ fn get_snapshot(
     }
 }
 
+fn get_branches(
+    date: &str,
+    db: &mut Connection,
+) -> Result<Vec<(String, String)>, rusqlite::Error> {
+    let mut stmt = db.prepare(
+        "
+        SELECT name, sha FROM refs
+        WHERE tag=0
+            AND from_date <= ?
+            AND (to_date IS NULL OR to_date > ?);
+        ORDER BY name;
+        "
+    )?;
+    let rows = stmt.query_map(
+        &[date, date],
+        |row| (
+            row.get::<_, String>(0),
+            row.get::<_, String>(1),
+        ),
+    )?;
+    let mut branches = Vec::new();
+    for branch in rows {
+        branches.push(branch?);
+    }
+    branches.sort();
+    Ok(branches)
+}
+
 /// Browser view
 fn browse(
-    time: String,
+    date: String,
     refname: String,
     db: Arc<Mutex<Connection>>,
     templates: Arc<Handlebars>,
-) -> Result<String, warp::reject::Rejection> {
-    let time = match percent_encoding::percent_decode(time.as_bytes())
+) -> Result<impl Reply, warp::reject::Rejection> {
+    let date = match percent_encoding::percent_decode(date.as_bytes())
         .decode_utf8()
     {
         Ok(s) => s,
@@ -147,17 +253,30 @@ fn browse(
     let mut db = db.lock().unwrap();
 
     // Load snapshot information
-    let date = match get_snapshot(&time, &mut db)
+    let (current, prev_date, next_date) = match get_snapshot(&date, &mut db)
         .map_err(warp::reject::custom)?
     {
-        Some(date) => date,
-        None => return Err(warp::reject::not_found()),
+        (Some(current), prev, next) => {
+            info!("Resolved date {} -> {}", date, current);
+            (current, prev, next)
+        }
+        (None, _, _) => return Err(warp::reject::not_found()),
     };
 
+    // Load branches
+    let mut branches = get_branches(&current, &mut db)
+        .map_err(warp::reject::custom)?;
+
     // Send response
-    info!("Resolved date {} -> {}", time, date);
     templates.render(
         "browse.html",
-        &json!({"snapshot": date, "refname": refname}),
-    ).map_err(warp::reject::custom)
+        &json!({
+            "snapshot": {
+                "current": current, "prev": prev_date, "next": next_date,
+                "req": date,
+            },
+            "refname": refname,
+            "branches": branches,
+        }),
+    ).map_err(warp::reject::custom).map(warp::reply::html)
 }
