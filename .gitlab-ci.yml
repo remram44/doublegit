@@ -1,0 +1,16 @@
+stages:
+  - test
+
+test-1.31:
+  stage: test
+  image: rust:1.31
+  script:
+    - cargo build
+    - cargo test
+
+test-stable:
+  stage: test
+  image: rust:latest
+  script:
+    - cargo build
+    - cargo test
