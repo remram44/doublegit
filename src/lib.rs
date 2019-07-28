@@ -163,6 +163,8 @@ where
     for ref_ in out.changed.iter().chain(out.new.iter()) {
         let sha = git::get_sha(repository, &ref_.fullname())?;
         git::make_branch(repository, &format!("keep-{}", sha), &sha)?;
+        // FIXME: If ref_ is an annotated tag, does branch point to the tag or
+        // the commit? (methinks tag)
     }
 
     // Remove superfluous branches
@@ -174,7 +176,9 @@ where
                 git::delete_branch(repository, &br)?;
             }
         }
-        if git::including_branches(repository, &sha)?.len() > 1 {
+        // If the ref is an annotated tag, this wrongly checks if the commit
+        // is included in other branches
+        if !ref_.tag && git::including_branches(repository, &sha)?.len() > 1 {
             git::delete_branch(repository, &keeper)?;
         }
     }
