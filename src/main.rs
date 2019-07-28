@@ -2,7 +2,7 @@ extern crate clap;
 extern crate env_logger;
 extern crate log;
 
-use clap::{App, Arg};
+use clap::{App, Arg, SubCommand};
 use std::env;
 use std::path::Path;
 
@@ -17,10 +17,12 @@ fn main() {
              .short("v")
              .help("Augment verbosity (print more details)")
              .multiple(true))
-        .arg(Arg::with_name("repository")
-             .help("Path to repository")
-             .required(true)
-             .takes_value(true));
+        .subcommand(SubCommand::with_name("update")
+                    .about("Fetch a repository and update its history")
+                    .arg(Arg::with_name("repository")
+                         .help("Path to repository")
+                         .required(true)
+                         .takes_value(true)));
     let matches = match cli.get_matches_from_safe_borrow(env::args_os()) {
         Ok(m) => m,
         Err(e) => {
@@ -48,13 +50,22 @@ fn main() {
         logger_builder.init();
     }
 
-    let repository = matches.value_of_os("repository").unwrap();
-    let repository = Path::new(repository);
-    match doublegit::update(repository) {
-        Ok(()) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1);
+    match matches.subcommand_name() {
+        Some("update") => {
+            let s_matches = matches.subcommand_matches("update").unwrap();
+            let repository = s_matches.value_of_os("repository").unwrap();
+            let repository = Path::new(repository);
+            match doublegit::update(repository) {
+                Ok(()) => {},
+                Err(e) => {
+                    eprintln!("{}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        _ => {
+            cli.print_help().expect("Can't print help");
+            std::process::exit(2);
         }
     }
 }
