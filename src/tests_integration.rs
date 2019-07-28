@@ -19,7 +19,7 @@ fn timestr(n: u32) -> String {
 }
 
 fn env(n: u32) -> Vec<(String, String)> {
-    let t = timestr(n);
+    let t = format!("{} -0400", timestr(n));
     vec![
         ("GIT_COMMITTER_DATE".into(), t.clone()),
         ("GIT_AUTHOR_DATE".into(), t),
@@ -57,7 +57,7 @@ fn test_update() {
         let t = timestr(n);
         assert!(process::Command::new("git")
             .arg("commit")
-            .arg(format!("--date={}", t))
+            .arg(format!("--date={} -0400", t))
             .arg("-m")
             .arg(msg)
             .current_dir(&origin)
