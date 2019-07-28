@@ -2,13 +2,13 @@ extern crate clap;
 extern crate env_logger;
 extern crate log;
 
-use clap::{App, Arg};
+use clap::{App, Arg, SubCommand};
 use std::env;
 use std::path::Path;
 
 fn main() {
     // Parse command line
-    let mut cli = App::new("doublegit")
+    let cli = App::new("doublegit")
         .bin_name("doublegit")
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
@@ -17,10 +17,31 @@ fn main() {
              .short("v")
              .help("Augment verbosity (print more details)")
              .multiple(true))
-        .arg(Arg::with_name("repository")
-             .help("Path to repository")
-             .required(true)
-             .takes_value(true));
+        .subcommand(SubCommand::with_name("update")
+                    .about("Fetch a repository and update its history")
+                    .arg(Arg::with_name("repository")
+                         .help("Path to repository")
+                         .required(true)
+                         .takes_value(true)));
+    #[cfg(feature = "web")]
+    let cli = cli.subcommand(SubCommand::with_name("web")
+                             .about("Open the repository history web page")
+                             .arg(Arg::with_name("host")
+                                  .short("-h")
+                                  .help("Set the host to bind the server to")
+                                  .takes_value(true)
+                                  .default_value("127.0.0.1"))
+                             .arg(Arg::with_name("port")
+                                  .short("-p")
+                                  .help("Set the port number for the server")
+                                  .takes_value(true)
+                                  .default_value("6617"))
+                             .arg(Arg::with_name("repository")
+                                  .help("Path to repository")
+                                  .required(true)
+                                  .takes_value(true)));
+
+    let mut cli = cli;
     let matches = match cli.get_matches_from_safe_borrow(env::args_os()) {
         Ok(m) => m,
         Err(e) => {
@@ -28,6 +49,21 @@ fn main() {
             std::process::exit(2);
         }
     };
+
+    macro_rules! check {
+        ($res:expr, $msg:expr,) => (
+            match $res {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("{}: {}", $msg, e);
+                    std::process::exit(1);
+                }
+            }
+        );
+        ($res:expr, $msg:expr) => (
+            check!($res, $msg,)
+        );
+    }
 
     // Set up logging
     {
@@ -48,13 +84,31 @@ fn main() {
         logger_builder.init();
     }
 
-    let repository = matches.value_of_os("repository").unwrap();
-    let repository = Path::new(repository);
-    match doublegit::update(repository) {
-        Ok(()) => {},
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1);
+    match matches.subcommand_name() {
+        Some("update") => {
+            let s_matches = matches.subcommand_matches("update").unwrap();
+            let repository = s_matches.value_of_os("repository").unwrap();
+            let repository = Path::new(repository);
+            check!(doublegit::update(repository), "Error updating");
+        }
+        Some("web") => {
+            let s_matches = matches.subcommand_matches("web").unwrap();
+            let repository = s_matches.value_of_os("repository").unwrap();
+            let repository = Path::new(repository);
+            let host = s_matches.value_of("host").unwrap();
+            let host = check!(host.parse(), "Invalid address");
+            let port = check!(
+                s_matches.value_of("port").unwrap().parse(),
+                "Invalid port number",
+            );
+            check!(
+                doublegit::web::serve(repository, host, port),
+                "Error running server",
+            );
+        }
+        _ => {
+            cli.print_help().expect("Can't print help");
+            std::process::exit(2);
         }
     }
 }

@@ -3,6 +3,8 @@ extern crate chrono;
 #[macro_use] extern crate log;
 extern crate regex;
 extern crate rusqlite;
+#[cfg(feature = "web")] #[macro_use] extern crate serde;
+#[cfg(feature = "web")] #[macro_use] extern crate serde_json;
 #[cfg(test)] extern crate tempfile;
 
 use rusqlite::Connection;
@@ -13,9 +15,9 @@ use std::path::Path;
 use std::time::SystemTime;
 
 mod git;
+#[cfg(feature = "web")] pub mod web;
 
-#[cfg(test)]
-mod tests_integration;
+#[cfg(test)] mod tests_integration;
 
 #[derive(Debug)]
 pub enum Error {
