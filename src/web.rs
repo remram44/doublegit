@@ -87,6 +87,49 @@ fn index(
         .body(Body::empty()).map_err(warp::reject::custom)
 }
 
+fn get_snapshot(
+    time: &str,
+    db: &mut Connection,
+) -> Result<Option<String>, rusqlite::Error> {
+    let date: Result<Option<String>, _> = if time == "latest" {
+        db.query_row(
+            "
+            SELECT MAX(date)
+            FROM (
+                SELECT MAX(from_date) AS date FROM refs
+                UNION ALL
+                SELECT MAX(to_date) AS date FROM refs
+            );
+            ",
+            rusqlite::NO_PARAMS,
+            |row| row.get(0),
+        )
+    } else {
+        db.query_row(
+            "
+            SELECT MAX(date)
+            FROM (
+                SELECT from_date AS date FROM refs
+                WHERE from_date <= ?
+                UNION ALL
+                SELECT MAX(to_date) AS date FROM refs
+                WHERE to_date <= ?
+            );
+            ",
+            &[&time, &time],
+            |row| row.get(0),
+        )
+    };
+    match date {
+        Ok(maybe_date) => Ok(maybe_date),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => {
+            error!("Error: {}", e);
+            Err(e)
+        }
+    }
+}
+
 /// Browser view
 fn browse(
     time: String,
@@ -94,8 +137,6 @@ fn browse(
     db: Arc<Mutex<Connection>>,
     templates: Arc<Handlebars>,
 ) -> Result<String, warp::reject::Rejection> {
-    let db = db.lock().unwrap();
-
     let time = match percent_encoding::percent_decode(time.as_bytes())
         .decode_utf8()
     {
@@ -103,55 +144,20 @@ fn browse(
         Err(_) => return Err(warp::reject::not_found()),
     };
 
-    // Load snapshot information
-    let date = (|| -> Result<Option<String>, rusqlite::Error> {
-        let date = if time == "latest" {
-            db.query_row(
-                "
-                SELECT MAX(date)
-                FROM (
-                    SELECT MAX(from_date) AS date FROM refs
-                    UNION ALL
-                    SELECT MAX(to_date) AS date FROM refs
-                );
-                ",
-                rusqlite::NO_PARAMS,
-                |row| row.get::<_, Option<String>>(0),
-            )
-        } else {
-            db.query_row(
-                "
-                SELECT MAX(date)
-                FROM (
-                    SELECT MAX(from_date) AS date FROM refs
-                    WHERE from_date <= ?
-                    UNION ALL
-                    SELECT MAX(to_date) AS date FROM refs
-                    WHERE to_date <= ?
-                );
-                ",
-                &[&time, &time],
-                |row| row.get::<_, Option<String>>(0),
-            )
-        };
-        match date {
-            Ok(maybe_date) => Ok(maybe_date),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => {
-                error!("Error: {}", e);
-                Err(e)
-            }
-        }
-    })().map_err(warp::reject::custom)?;
+    let mut db = db.lock().unwrap();
 
-    if let Some(date) = date {
-        info!("Resolved date {} -> {}", time, date);
-        templates.render(
-            "browse.html",
-            &json!({"snapshot": date, "refname": refname}),
-        ).map_err(warp::reject::custom)
-    } else {
-        warn!("No snapshot before {:?}", time);
-        Err(warp::reject::not_found())
-    }
+    // Load snapshot information
+    let date = match get_snapshot(&time, &mut db)
+        .map_err(warp::reject::custom)?
+    {
+        Some(date) => date,
+        None => return Err(warp::reject::not_found()),
+    };
+
+    // Send response
+    info!("Resolved date {} -> {}", time, date);
+    templates.render(
+        "browse.html",
+        &json!({"snapshot": date, "refname": refname}),
+    ).map_err(warp::reject::custom)
 }
