@@ -3,6 +3,7 @@ extern crate chrono;
 #[macro_use] extern crate log;
 extern crate regex;
 extern crate rusqlite;
+#[cfg(test)] extern crate tempfile;
 
 use rusqlite::Connection;
 use rusqlite::types::ToSql;
