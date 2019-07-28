@@ -14,6 +14,9 @@ use std::time::SystemTime;
 
 mod git;
 
+#[cfg(test)]
+mod tests_integration;
+
 #[derive(Debug)]
 pub enum Error {
     Sqlite(rusqlite::Error),
