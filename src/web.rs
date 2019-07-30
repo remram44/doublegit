@@ -1,3 +1,5 @@
+//! Web interface to the archived Git content
+
 use handlebars::Handlebars;
 use http::StatusCode;
 use hyper::Body;
@@ -11,6 +13,7 @@ use warp::reply::{Reply, Response};
 
 use crate::Error;
 
+/// Start the warp server with our routes
 pub fn serve(
     repository: &Path,
     host: std::net::IpAddr,
@@ -159,6 +162,7 @@ fn snapshot(
         .map_err(warp::reject::custom)
 }
 
+/// Find the previous/current/next snapshots for a given date
 fn get_snapshot(
     date: &str,
     db: &mut Connection,
@@ -217,6 +221,7 @@ fn get_snapshot(
     }
 }
 
+/// Get a list of branches and their SHA-1 position at a given date
 fn get_branches(
     date: &str,
     db: &mut Connection,
@@ -245,6 +250,7 @@ fn get_branches(
     Ok(branches)
 }
 
+/// Structure describing commits, extracted from Git
 #[derive(Serialize)]
 struct Commit {
     sha: String,
@@ -253,6 +259,7 @@ struct Commit {
     message: String,
 }
 
+/// Get the latest commits in a branch (possibly SHA-1) from Git
 fn get_commits(
     repository: &Path,
     target: &str,
@@ -291,7 +298,10 @@ fn get_commits(
     Ok(commits)
 }
 
-/// Browser view
+/// Main view, showing information to the user
+///
+/// For a specific date and a specific branch, show the latest commits, other
+/// branches in that snapshot, and link to the previous/next snapshots.
 fn browse(
     date: String,
     refname: String,

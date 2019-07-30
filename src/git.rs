@@ -1,3 +1,8 @@
+//! Interact with a Git repo through the command-line
+//!
+//! This module provides functions that run Git commands and parse Git's output
+//! formats.
+
 use regex::Regex;
 use std::collections::HashSet;
 use std::ops::Not;
@@ -6,6 +11,7 @@ use std::process;
 
 use crate::{Error, Ref};
 
+/// A fetch operation
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum Operation {
     FastForward,
@@ -17,6 +23,7 @@ enum Operation {
     Noop,
 }
 
+/// Parse the `Operation` enum from the one-character prefix in git-fetch
 fn parse_operation(chr: &str) -> Result<Operation, Error> {
     if chr.len() != 1 {
         return Err(Error::git("Parse error: invalid operation"));
@@ -34,12 +41,14 @@ fn parse_operation(chr: &str) -> Result<Operation, Error> {
     })
 }
 
+/// Describe ref changes during a fetch operation
 pub struct FetchOutput {
     pub new: HashSet<Ref>,
     pub changed: HashSet<Ref>,
     pub removed: HashSet<Ref>,
 }
 
+/// Run git-fetch on a repository and parse the ref changes
 pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
     let output = process::Command::new("git")
         .args(&[
@@ -62,6 +71,7 @@ pub fn fetch(repository: &Path) -> Result<FetchOutput, Error> {
     parse_fetch_output(&output.stderr)
 }
 
+/// Parse git-fetch output, broken out for unit testing
 fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
     lazy_static! {
         static ref _RE_FETCH: Regex = Regex::new(
@@ -137,6 +147,7 @@ fn parse_fetch_output(output: &[u8]) -> Result<FetchOutput, Error> {
     Ok(FetchOutput { new, changed, removed })
 }
 
+/// Get the SHA-1 hash for a reference, using git-rev-parse
 pub fn get_sha(repository: &Path, refname: &str) -> Result<String, Error> {
     let output = process::Command::new("git")
         .args(&["rev-parse", refname])
@@ -155,6 +166,11 @@ pub fn get_sha(repository: &Path, refname: &str) -> Result<String, Error> {
     Ok(sha.trim().into())
 }
 
+/// Make a branch with the given name at the given commit identified by SHA-1
+///
+/// Those are actual branches (e.g. refs/heads/) that will be listed in
+/// git-branch output (and therefore by `included_branches()` and
+/// `including_branches()`).
 pub fn make_branch(
     repository: &Path,
     name: &str,
@@ -171,6 +187,14 @@ pub fn make_branch(
     Ok(())
 }
 
+/// Make a "raw" reference with the given full path at the given SHA-1
+///
+/// Those need NOT be actual branches (e.g. refs/heads/). The full path should
+/// be given, starting with `refs/`.
+///
+/// This is useful to create refs that will not be listed in git-branch output
+/// and therefore will not appear in `included_branches()` and
+/// `including_branches()` output.
 pub fn make_ref(
     repository: &Path,
     name: &str,
@@ -190,6 +214,10 @@ pub fn make_ref(
     Ok(())
 }
 
+/// Determines if a given name or hash is an annotated tag or not
+///
+/// This will return false for commits, branches (and other references pointing
+/// to commits), and light-weight tags.
 pub fn is_annotated_tag(
     repository: &Path,
     target: &str,
@@ -209,6 +237,10 @@ pub fn is_annotated_tag(
     Ok(output.stdout == b"tag\n")
 }
 
+/// List all the branches included in the given one (e.g. parents)
+///
+/// Those are branches that are alive if the given branch is alive, and are
+/// therefore superfluous for garbage-collection-prevention purposes.
 pub fn included_branches(
     repository: &Path,
     target: &str,
@@ -237,6 +269,10 @@ pub fn included_branches(
     Ok(refs)
 }
 
+/// List all the branches that include the given one (e.g. more recent)
+///
+/// Those are branches that keep the given branch alive, making it superfluous
+/// for garbage-collection-prevention purposes.
 pub fn including_branches(
     repository: &Path,
     target: &str,
@@ -265,6 +301,9 @@ pub fn including_branches(
     Ok(refs)
 }
 
+/// Delete a branch
+///
+/// This will fail if the branch doesn't exist.
 pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
     let status = process::Command::new("git")
         .args(&["branch", "-D", name])

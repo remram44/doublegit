@@ -9,15 +9,18 @@ use std::process;
 
 use crate::git::get_sha;
 
+/// Make a fake time from a number, to make hashes reproducible
 fn time(n: u32) -> chrono::DateTime<chrono::Utc> {
     use chrono::TimeZone;
     chrono::Utc.ymd(2019, 3, 16).and_hms(17, n, 0)
 }
 
+/// Make a fake time for Git, to make hashes reproducible
 fn timestr(n: u32) -> String {
     format!("2019-03-16 17:{:02}:00", n)
 }
 
+/// Set Git's environment variables to make hashes reproducible
 fn env(n: u32) -> Vec<(String, String)> {
     let t = format!("{} -0400", timestr(n));
     vec![

@@ -19,14 +19,19 @@ mod git;
 
 #[cfg(test)] mod tests_integration;
 
+/// Error type for this crate
 #[derive(Debug)]
 pub enum Error {
+    /// An error with SQLite
     Sqlite(rusqlite::Error),
+    /// An error calling Git
     Git(String),
+    /// A general I/O error
     Io(std::io::Error),
 }
 
 impl Error {
+    /// Utility to create a Git variant from a string
     fn git(msg: &str) -> Error {
         Error::Git(msg.into())
     }
@@ -56,6 +61,7 @@ impl From<std::io::Error> for Error {
     }
 }
 
+/// A reference, either tag or branch
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ref {
     name: String,
@@ -63,6 +69,7 @@ pub struct Ref {
 }
 
 impl Ref {
+    /// Parse a remote ref, either `origin/branch` or `tag`
     fn parse_remote_ref(refname: &str) -> Result<Ref, Error> {
         let idx = refname.find('/').ok_or(Error::git("Invalid remote ref"))?;
         let remote = &refname[0..idx];
@@ -73,6 +80,7 @@ impl Ref {
         Ok(Ref { name: name.into(), tag: false })
     }
 
+    /// Print the full reference name, e.g. `origin/branch`
     fn fullname(&self) -> Cow<String> {
         if self.tag {
             Cow::Borrowed(&self.name)
@@ -82,10 +90,12 @@ impl Ref {
     }
 }
 
+/// Update a repository, fetching new changes and updating the database
 pub fn update(repository: &Path) -> Result<(), Error> {
     update_with_date(repository, SystemTime::now())
 }
 
+/// Update a repository, providing the current date
 pub fn update_with_date<Date>(
     repository: &Path,
     date: Date,

@@ -6,6 +6,7 @@ use clap::{App, Arg, SubCommand};
 use std::env;
 use std::path::Path;
 
+/// Command-line entrypoint
 fn main() {
     // Parse command line
     let cli = App::new("doublegit")
