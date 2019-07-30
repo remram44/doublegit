@@ -56,17 +56,6 @@ impl From<std::io::Error> for Error {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum Operation {
-    FastForward,
-    Forced,
-    Pruned,
-    Tag,
-    New,
-    Reject,
-    Noop,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ref {
     name: String,
