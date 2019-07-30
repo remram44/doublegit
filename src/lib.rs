@@ -155,7 +155,7 @@ where
             INSERT INTO refs(name, from_date, to_date, sha, tag)
             VALUES(?, ?, NULL, ?, ?);
             ",
-            &[&ref_.name, &date, &sha, &ref_.tag as &ToSql],
+            &[&ref_.name, &date, &sha, &ref_.tag as &dyn ToSql],
         )?;
     }
 
