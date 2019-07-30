@@ -1,58 +1,79 @@
+use erased_serde::Serialize;
+
 mod github;
+mod register;
 
 enum Error {
     Io(std::io::Error),
+    NotSupported,
 }
 
 type Result<T> = std::result::Result<T, Error>;
 
-trait ProjectEnumerator {
-    type Project;
-
-    fn list_own_projects(username: &str) -> Vec<Self::Project> {
-        Vec::new()
-    }
-
-    fn list_starred_projects(uesrname: &str) -> Vec<Self::Project> {
-        Vec::new()
-    }
-}
-
-trait GitProject {
-    fn git_url(&self) -> Option<String>;
-}
-
-trait Bugtracker {
-    fn get_issues<Rec: IssueRecorder>(
+/// A Git platform, from which we can get projects.
+trait GitPlatform: Serialize {
+    /// If supported, return a list of all projects owned by a user
+    fn list_own_projects(
         &self,
-        recorder: Rec,
+        username: &str,
+    ) -> Result<Vec<Box<GitProject>>> {
+        Err(Error::NotSupported)
+    }
+
+    /// If supported, return a list of all projects starred/followed by a user
+    fn list_starred_projects(
+        &self,
+        username: &str,
+    ) -> Result<Vec<Box<GitProject>>> {
+        Err(Error::NotSupported)
+    }
+}
+
+/// A project on a Git platform
+trait GitProject: Serialize {
+    /// Get the Git URL for this project, if supported
+    fn git_url(&self) -> Option<String>;
+
+    /// Read the issues/merge requests from this project, if supported
+    fn get_issues(
+        &self,
+        recorder: IssueRecorder,
         last: Option<String>,
     ) -> Result<()>;
 }
 
-struct MergeRequest {
+/// Represent merge request information, that may be attached to issues
+pub struct MergeRequest {
     /// The base or target of the merge request
-    base: String,
+    pub base: String,
     /// The head or source of the merge request
-    head: String,
+    pub head: String,
 }
 
-trait IssueRecorder {
+/// Recorder object through which `GitProject::get_issues()` can record issues
+pub struct IssueRecorder {
+}
+
+impl IssueRecorder {
     /// Record a new issue
-    fn record_issue(
+    pub fn record_issue(
         &mut self,
         id: &str,
         title: &str,
         description: Option<&str>,
         merge_request: Option<MergeRequest>,
-    ) -> Result<()>;
+    ) -> Result<()> {
+        unimplemented!()
+    }
 
     /// Record a comment in an issue's thread
-    fn record_comment(
+    pub fn record_comment(
         &mut self,
         issue_id: &str,
         id: Option<&str>,
         parent: Option<&str>,
         text: Option<&str>,
-    ) -> Result<()>;
+    ) -> Result<()> {
+        unimplemented!()
+    }
 }
