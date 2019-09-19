@@ -1,5 +1,6 @@
 use erased_serde::Serialize;
-//use std::fs::File;
+use serde_json::Value;
+use std::fs::File;
 use std::path::Path;
 
 mod github;
@@ -80,7 +81,59 @@ impl IssueRecorder {
     }
 }
 
-pub fn update_project(path: &Path) -> std::result::Result<(), crate::Error> {
+pub fn update_with_date(
+    path: &Path,
+    date: chrono::DateTime<chrono::Utc>,
+) -> std::result::Result<(), crate::Error>
+{
+    // Open configuration file
+    let config_file = path.join("doublegit.json");
+    if !config_file.exists() {
+        info!("Config file {:?} doesn't exist, skipping API update", path);
+        return Ok(());
+    }
+    let file = match File::open(&config_file) {
+        Ok(f) => {
+            info!("Loaded config file {:?}", config_file);
+            f
+        }
+        Err(e) => {
+            warn!("Couldn't open config file {:?}", config_file);
+            return Err(e.into());
+        }
+    };
+
+    // Load as JSON
+    let mut config: Value = serde_json::from_reader(file)
+        .map_err(|e| crate::Error::Config(
+            format!("Error reading config: {}", e)
+        ))?;
+
+    // Should be an object with a key 'type'
+    let type_name = if let Value::Object(ref mut obj) = config {
+        if let Some(Value::String(s)) = obj.remove("type") {
+            s
+        } else {
+            return Err(crate::Error::Config(
+                "Config does not contain a key \"type\"".into()
+            ));
+        }
+    } else {
+        return Err(crate::Error::Config("Config is not an object".into()));
+    };
+
+    // TODO: Look up API
+    assert!(type_name == "github");
+
+    // Load configuration object
+    let project: github::GithubProject =
+        serde_json::from_value(config)
+        .map_err(|e| crate::Error::Config(
+            format!("Invalid {} config: {}", type_name, e)
+        ))?;
+
+    // TODO: Update it
+
     Ok(())
 }
 
