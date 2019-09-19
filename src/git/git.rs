@@ -9,7 +9,8 @@ use std::ops::Not;
 use std::path::Path;
 use std::process;
 
-use crate::{Error, Ref};
+use crate::Error;
+use super::Ref;
 
 /// A fetch operation
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -319,8 +320,8 @@ pub fn delete_branch(repository: &Path, name: &str) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Ref;
-    use crate::git::{Operation, parse_operation, parse_fetch_output};
+    use super::Ref;
+    use super::{Operation, parse_operation, parse_fetch_output};
 
     #[test]
     fn test_parse_operation() {

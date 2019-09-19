@@ -22,10 +22,10 @@ fn main() {
         )
         .subcommand(
             SubCommand::with_name("update")
-                .about("Fetch a repository and update its history")
+                .about("Fetch a project and update its history and events")
                 .arg(
-                    Arg::with_name("repository")
-                        .help("Path to repository")
+                    Arg::with_name("project")
+                        .help("Path to project")
                         .required(true)
                         .takes_value(true),
                 ),
@@ -49,8 +49,8 @@ fn main() {
                     .default_value("6617"),
             )
             .arg(
-                Arg::with_name("repository")
-                    .help("Path to repository")
+                Arg::with_name("project")
+                    .help("Path to project")
                     .required(true)
                     .takes_value(true),
             ),
@@ -102,14 +102,14 @@ fn main() {
     match matches.subcommand_name() {
         Some("update") => {
             let s_matches = matches.subcommand_matches("update").unwrap();
-            let repository = s_matches.value_of_os("repository").unwrap();
-            let repository = Path::new(repository);
-            check!(doublegit::update(repository), "Error updating");
+            let project = s_matches.value_of_os("project").unwrap();
+            let project = Path::new(project);
+            check!(doublegit::update(project), "Error updating repository");
         }
         Some("web") => {
             let s_matches = matches.subcommand_matches("web").unwrap();
-            let repository = s_matches.value_of_os("repository").unwrap();
-            let repository = Path::new(repository);
+            let project = s_matches.value_of_os("project").unwrap();
+            let project = Path::new(project);
             let host = s_matches.value_of("host").unwrap();
             let host = check!(host.parse(), "Invalid address");
             let port = check!(
@@ -117,7 +117,7 @@ fn main() {
                 "Invalid port number",
             );
             check!(
-                doublegit::web::serve(repository, host, port),
+                doublegit::web::serve(project, host, port),
                 "Error running server",
             );
         }

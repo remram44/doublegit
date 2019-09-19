@@ -7,7 +7,7 @@ use std::ops::Not;
 use std::path::Path;
 use std::process;
 
-use crate::git::get_sha;
+use crate::git::git::get_sha;
 
 /// Make a fake time from a number, to make hashes reproducible
 fn time(n: u32) -> chrono::DateTime<chrono::Utc> {
@@ -342,7 +342,7 @@ fn check_db(
         ",
     ).unwrap();
     let refs: Vec<_> = stmt.query_map(
-        &[&tags as &ToSql],
+        &[&tags as &dyn ToSql],
         |row| (
             row.get::<_, String>(0),
             row.get::<_, String>(1),
