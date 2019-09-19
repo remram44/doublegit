@@ -79,5 +79,7 @@ where
     // Update Git data
     git::update_with_date(project, date)?;
 
+    // TODO: Update API data
+
     Ok(())
 }

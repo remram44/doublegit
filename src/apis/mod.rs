@@ -3,7 +3,7 @@ use erased_serde::Serialize;
 use std::path::Path;
 
 mod github;
-mod register;
+//mod register;
 
 pub enum Error {
     Io(std::io::Error),
