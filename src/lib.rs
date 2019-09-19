@@ -8,7 +8,7 @@ extern crate rusqlite;
 #[cfg(feature = "web")] #[macro_use] extern crate serde_json;
 #[cfg(test)] extern crate tempfile;
 
-mod apis;
+pub mod apis;
 mod git;
 #[cfg(feature = "web")] pub mod web;
 
@@ -25,6 +25,8 @@ pub enum Error {
     Git(String),
     /// A general I/O error
     Io(std::io::Error),
+    /// A configuration error
+    Config(String),
 }
 
 impl Error {
@@ -40,6 +42,7 @@ impl fmt::Display for Error {
             Error::Sqlite(e) => write!(f, "SQLite error: {}", e),
             Error::Git(e) => write!(f, "Git error: {}", e),
             Error::Io(e) => write!(f, "I/O error: {}", e),
+            Error::Config(e) => write!(f, "{}", e),
         }
     }
 }

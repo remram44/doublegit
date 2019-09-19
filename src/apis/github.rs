@@ -28,7 +28,7 @@ impl GitPlatform for Github {
     fn list_own_projects(
         &self,
         username: &str,
-    ) -> ApiResult<Vec<Box<GitProject>>> {
+    ) -> ApiResult<Vec<Box<dyn GitProject>>> {
         // https://api.github.com/users/remram44/repos
         unimplemented!()
     }
@@ -36,7 +36,7 @@ impl GitPlatform for Github {
     fn list_starred_projects(
         &self,
         username: &str,
-    ) -> ApiResult<Vec<Box<GitProject>>> {
+    ) -> ApiResult<Vec<Box<dyn GitProject>>> {
         // https://api.github.com/users/remram44/starred
         unimplemented!()
     }

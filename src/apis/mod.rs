@@ -1,9 +1,11 @@
 use erased_serde::Serialize;
+//use std::fs::File;
+use std::path::Path;
 
 mod github;
 mod register;
 
-enum Error {
+pub enum Error {
     Io(std::io::Error),
     NotSupported,
 }
@@ -16,7 +18,7 @@ trait GitPlatform: Serialize {
     fn list_own_projects(
         &self,
         username: &str,
-    ) -> Result<Vec<Box<GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>> {
         Err(Error::NotSupported)
     }
 
@@ -24,7 +26,7 @@ trait GitPlatform: Serialize {
     fn list_starred_projects(
         &self,
         username: &str,
-    ) -> Result<Vec<Box<GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>> {
         Err(Error::NotSupported)
     }
 }
@@ -77,3 +79,48 @@ impl IssueRecorder {
         unimplemented!()
     }
 }
+
+pub fn update_project(path: &Path) -> std::result::Result<(), crate::Error> {
+    Ok(())
+}
+
+/*
+/// Config file, either for a project or a collection of projects.
+#[derive(Serialize, Deserialize)]
+enum EitherConfig {
+    Project(serde_json::Value),
+    Collection(serde_json::Value),
+}
+
+/// Update a directory, which is either a project or a collection of projects.
+fn update_directory(path: &Path) -> std::result::Result<(), crate::Error> {
+    info!("Updating directory {:?}...", path);
+    let config_file = path.join("doublegit.json");
+    let file = match File::open(&config_file) {
+        Ok(f) => {
+            info!("Loaded config file {:?}", config_file);
+            f
+        }
+        Err(e) => {
+            warn!("Couldn't open config file {:?}", config_file);
+            return Err(e.into());
+        }
+    };
+    let config: EitherConfig = serde_json::from_reader(file)
+        .map_err(|e| crate::Error::Config(
+            format!("Error reading config: {}", e)
+        ))?;
+    match config {
+        EitherConfig::Project(config) => {
+            info!("Config is project, updating");
+            let project = register::registry.load_;
+            unimplemented!();
+        }
+        EitherConfig::Collection(config) => {
+            info!("Config is a collection, updating");
+            unimplemented!()
+        }
+    }
+    Ok(())
+}
+*/

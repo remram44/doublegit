@@ -6,6 +6,8 @@ use clap::{App, Arg, SubCommand};
 use std::env;
 use std::path::Path;
 
+use doublegit::apis::update_project;
+
 /// Command-line entrypoint
 fn main() {
     // Parse command line
@@ -105,6 +107,7 @@ fn main() {
             let project = s_matches.value_of_os("project").unwrap();
             let project = Path::new(project);
             check!(doublegit::update(project), "Error updating repository");
+            check!(update_project(project), "Error updating events");
         }
         Some("web") => {
             let s_matches = matches.subcommand_matches("web").unwrap();

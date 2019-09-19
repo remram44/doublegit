@@ -1,30 +1,24 @@
 use super::{Result as ApiResult, GitPlatform, GitProject};
 
-#[derive(Debug)]
+trait Loader {
+    fn load_platforn(&self, reader: &[u8]) -> ApiResult<Box<dyn GitPlatform>>;
+
+    fn load_project(&self, reader: &[u8]) -> ApiResult<Box<dyn GitProject>>;
+}
+
 pub struct Registry {
 }
 
-pub trait Loader {
-    fn load_platforn(&self, reader: &[u8]) -> ApiResult<Box<GitPlatform>>;
-
-    fn load_project(&self, reader: &[u8]) -> ApiResult<Box<GitProject>>;
-}
-
 impl Registry {
-    fn new() -> Registry {
-        Registry {
-        }
-    }
-
-    pub fn register_platform(
+    fn register_platform(
         name: &str,
-        loader: Box<Loader>,
+        loader: Box<dyn Loader>,
     ) {
     }
 }
 
 lazy_static! {
-    pub static ref registry: Registry = Registry::new();
+    pub static ref registry: Registry = Registry {};
 }
 
 // Construct from command-line
