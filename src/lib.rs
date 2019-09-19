@@ -27,6 +27,8 @@ pub enum Error {
     Io(std::io::Error),
     /// A configuration error
     Config(String),
+    /// This whole operation is not supported
+    NotSupported,
 }
 
 impl Error {
@@ -43,6 +45,7 @@ impl fmt::Display for Error {
             Error::Git(e) => write!(f, "Git error: {}", e),
             Error::Io(e) => write!(f, "I/O error: {}", e),
             Error::Config(e) => write!(f, "{}", e),
+            Error::NotSupported => write!(f, "Not supported"),
         }
     }
 }

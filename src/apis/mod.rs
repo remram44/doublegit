@@ -1,25 +1,21 @@
+mod github;
+mod registry;
+
 use erased_serde::Serialize;
 use serde_json::Value;
 use std::fs::File;
 use std::path::Path;
 
-mod github;
-//mod register;
-
-pub enum Error {
-    Io(std::io::Error),
-    NotSupported,
-}
-
-type Result<T> = std::result::Result<T, Error>;
+use crate::Error;
+use self::registry::get_platform;
 
 /// A Git platform, from which we can get projects.
-trait GitPlatform: Serialize {
+pub trait GitPlatform: Serialize {
     /// If supported, return a list of all projects owned by a user
     fn list_own_projects(
         &self,
         username: &str,
-    ) -> Result<Vec<Box<dyn GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>, Error> {
         Err(Error::NotSupported)
     }
 
@@ -27,13 +23,13 @@ trait GitPlatform: Serialize {
     fn list_starred_projects(
         &self,
         username: &str,
-    ) -> Result<Vec<Box<dyn GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>, Error> {
         Err(Error::NotSupported)
     }
 }
 
 /// A project on a Git platform
-trait GitProject: Serialize {
+pub trait GitProject: Serialize {
     /// Get the Git URL for this project, if supported
     fn git_url(&self) -> Option<String>;
 
@@ -42,7 +38,7 @@ trait GitProject: Serialize {
         &self,
         recorder: IssueRecorder,
         last: Option<String>,
-    ) -> Result<()>;
+    ) -> Result<(), Error>;
 }
 
 /// Represent merge request information, that may be attached to issues
@@ -65,7 +61,7 @@ impl IssueRecorder {
         title: &str,
         description: Option<&str>,
         merge_request: Option<MergeRequest>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 
@@ -76,7 +72,7 @@ impl IssueRecorder {
         id: Option<&str>,
         parent: Option<&str>,
         text: Option<&str>,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         unimplemented!()
     }
 }
@@ -84,7 +80,7 @@ impl IssueRecorder {
 pub fn update_with_date(
     path: &Path,
     date: chrono::DateTime<chrono::Utc>,
-) -> std::result::Result<(), crate::Error>
+) -> std::result::Result<(), Error>
 {
     // Open configuration file
     let config_file = path.join("doublegit.json");
@@ -105,34 +101,33 @@ pub fn update_with_date(
 
     // Load as JSON
     let mut config: Value = serde_json::from_reader(file)
-        .map_err(|e| crate::Error::Config(
-            format!("Error reading config: {}", e)
-        ))?;
+        .map_err(|e| Error::Config( format!("Error reading config: {}", e)))?;
 
     // Should be an object with a key 'type'
     let type_name = if let Value::Object(ref mut obj) = config {
         if let Some(Value::String(s)) = obj.remove("type") {
             s
         } else {
-            return Err(crate::Error::Config(
+            return Err(Error::Config(
                 "Config does not contain a key \"type\"".into()
             ));
         }
     } else {
-        return Err(crate::Error::Config("Config is not an object".into()));
+        return Err(Error::Config("Config is not an object".into()));
     };
 
-    // TODO: Look up API
-    assert!(type_name == "github");
+    // Get API from registry
+    let loader = if let Some(loader) = get_platform(&type_name) {
+        loader
+    } else {
+        return Err(Error::Config("No such platform: {}".into()));
+    };
 
     // Load configuration object
-    let project: github::GithubProject =
-        serde_json::from_value(config)
-        .map_err(|e| crate::Error::Config(
-            format!("Invalid {} config: {}", type_name, e)
-        ))?;
+    let project: Box<dyn GitProject> = loader.load_project(config)
+        .map_err(|e| Error::Config(format!("{}", e)))?;
 
-    // TODO: Update it
+    // TODO: Fetch project API data
 
     Ok(())
 }
@@ -146,7 +141,7 @@ enum EitherConfig {
 }
 
 /// Update a directory, which is either a project or a collection of projects.
-fn update_directory(path: &Path) -> std::result::Result<(), crate::Error> {
+fn update_directory(path: &Path) -> std::result::Result<(), Error> {
     info!("Updating directory {:?}...", path);
     let config_file = path.join("doublegit.json");
     let file = match File::open(&config_file) {
@@ -160,7 +155,7 @@ fn update_directory(path: &Path) -> std::result::Result<(), crate::Error> {
         }
     };
     let config: EitherConfig = serde_json::from_reader(file)
-        .map_err(|e| crate::Error::Config(
+        .map_err(|e| Error::Config(
             format!("Error reading config: {}", e)
         ))?;
     match config {

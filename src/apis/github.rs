@@ -1,6 +1,7 @@
 use std::fmt;
 
-use super::{Result as ApiResult, IssueRecorder, GitPlatform, GitProject};
+use crate::Error;
+use super::{IssueRecorder, GitPlatform, GitProject};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Github {
@@ -28,7 +29,7 @@ impl GitPlatform for Github {
     fn list_own_projects(
         &self,
         username: &str,
-    ) -> ApiResult<Vec<Box<dyn GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>, Error> {
         // https://api.github.com/users/remram44/repos
         unimplemented!()
     }
@@ -36,7 +37,7 @@ impl GitPlatform for Github {
     fn list_starred_projects(
         &self,
         username: &str,
-    ) -> ApiResult<Vec<Box<dyn GitProject>>> {
+    ) -> Result<Vec<Box<dyn GitProject>>, Error> {
         // https://api.github.com/users/remram44/starred
         unimplemented!()
     }
@@ -63,9 +64,35 @@ impl GitProject for GithubProject {
         &self,
         recorder: IssueRecorder,
         last: Option<String>,
-    ) -> ApiResult<()> {
+    ) -> Result<(), Error> {
         // https://api.github.com/repos/remram44/adler32-rs/issues
         // https://api.github.com/repos/remram44/adler32-rs/issues/events
         unimplemented!()
+    }
+}
+
+pub struct GithubLoader;
+
+impl super::registry::Loader for GithubLoader {
+    fn load_platform(
+        &self,
+        config: serde_json::Value,
+    ) -> Result<Box<dyn GitPlatform>, Error> {
+        let gh: Github = serde_json::from_value(config)
+            .map_err(|e| Error::Config(
+                format!("Invalid configuration: {}", e)
+            ))?;
+        Ok(Box::new(gh))
+    }
+
+    fn load_project(
+        &self,
+        config: serde_json::Value,
+    ) -> Result<Box<dyn GitProject>, Error> {
+        let proj: GithubProject = serde_json::from_value(config)
+            .map_err(|e| Error::Config(
+                format!("Invalid configuration: {}", e)
+            ))?;
+        Ok(Box::new(proj))
     }
 }
