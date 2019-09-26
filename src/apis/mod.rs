@@ -1,4 +1,5 @@
 mod github;
+mod recorder;
 mod registry;
 
 use erased_serde::Serialize;
@@ -8,6 +9,13 @@ use std::path::Path;
 
 use crate::Error;
 use self::registry::get_platform;
+use self::recorder::Recorder;
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Error {
+        Error::Http(e)
+    }
+}
 
 /// A Git platform, from which we can get projects.
 pub trait GitPlatform: Serialize {
@@ -34,47 +42,11 @@ pub trait GitProject: Serialize {
     fn git_url(&self) -> Option<String>;
 
     /// Read the issues/merge requests from this project, if supported
-    fn get_issues(
+    fn update(
         &self,
-        recorder: IssueRecorder,
+        recorder: &mut Recorder,
         last: Option<String>,
     ) -> Result<(), Error>;
-}
-
-/// Represent merge request information, that may be attached to issues
-pub struct MergeRequest {
-    /// The base or target of the merge request
-    pub base: String,
-    /// The head or source of the merge request
-    pub head: String,
-}
-
-/// Recorder object through which `GitProject::get_issues()` can record issues
-pub struct IssueRecorder {
-}
-
-impl IssueRecorder {
-    /// Record a new issue
-    pub fn record_issue(
-        &mut self,
-        id: &str,
-        title: &str,
-        description: Option<&str>,
-        merge_request: Option<MergeRequest>,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
-
-    /// Record a comment in an issue's thread
-    pub fn record_comment(
-        &mut self,
-        issue_id: &str,
-        id: Option<&str>,
-        parent: Option<&str>,
-        text: Option<&str>,
-    ) -> Result<(), Error> {
-        unimplemented!()
-    }
 }
 
 pub fn update_with_date(
@@ -127,7 +99,10 @@ pub fn update_with_date(
     let project: Box<dyn GitProject> = loader.load_project(config)
         .map_err(|e| Error::Config(format!("{}", e)))?;
 
-    // TODO: Fetch project API data
+    // Fetch project API data
+    let mut recorder = Recorder::open(path)?;
+    let last_event = recorder.last_event()?;
+    project.update(&mut recorder, last_event)?;
 
     Ok(())
 }

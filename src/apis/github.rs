@@ -1,7 +1,9 @@
+use reqwest;
+use serde_json::Value;
 use std::fmt;
 
 use crate::Error;
-use super::{IssueRecorder, GitPlatform, GitProject};
+use super::{GitPlatform, GitProject, Recorder};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Github {
@@ -60,14 +62,30 @@ impl GitProject for GithubProject {
         Some(format!("{}.git", self.url))
     }
 
-    fn get_issues(
+    fn update(
         &self,
-        recorder: IssueRecorder,
+        recorder: &mut Recorder,
         last: Option<String>,
-    ) -> Result<(), Error> {
-        // https://api.github.com/repos/remram44/adler32-rs/issues
-        // https://api.github.com/repos/remram44/adler32-rs/issues/events
-        unimplemented!()
+    ) -> Result<(), Error>
+    {
+        let response = reqwest::get(&format!(
+            "{}/repos/{}/issues/events",
+            self.platform.api_path,
+            self.url,
+        ))?.json()?;
+        let events = if let Value::Array(a) = response {
+            a
+        } else {
+            return Err(Error::Api(
+                "GitHub API events are not an array".into()
+            ));
+        };
+        for event in events {
+            // TODO: record event, parse events of interest (issue/pr)
+            unimplemented!()
+        }
+        //recorder.set_last_event(TODO)?;
+        Ok(())
     }
 }
 

@@ -3,6 +3,7 @@ extern crate erased_serde;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate regex;
+extern crate reqwest;
 extern crate rusqlite;
 #[cfg(feature = "web")] #[macro_use] extern crate serde;
 #[cfg(feature = "web")] #[macro_use] extern crate serde_json;
@@ -25,6 +26,10 @@ pub enum Error {
     Git(String),
     /// A general I/O error
     Io(std::io::Error),
+    /// An HTTP download error
+    Http(reqwest::Error),
+    /// A problem with the API server
+    Api(String),
     /// A configuration error
     Config(String),
     /// This whole operation is not supported
@@ -44,6 +49,8 @@ impl fmt::Display for Error {
             Error::Sqlite(e) => write!(f, "SQLite error: {}", e),
             Error::Git(e) => write!(f, "Git error: {}", e),
             Error::Io(e) => write!(f, "I/O error: {}", e),
+            Error::Http(e) => write!(f, "HTTP error: {}", e),
+            Error::Api(e) => write!(f, "API error: {}", e),
             Error::Config(e) => write!(f, "{}", e),
             Error::NotSupported => write!(f, "Not supported"),
         }
