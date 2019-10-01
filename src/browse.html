@@ -1,37 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang=en>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
     <title>Doublegit</title>
-    <style type="text/css">
-#snapshot-nav {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-}
-    </style>
   </head>
   <body>
-    <div id="snapshot-nav">
-      <p>
-        {{#if snapshot.prev}}
-        <a href="/_/{{ snapshot.prev }}">
-        {{else}}
-        <a class="no-more-page">
-        {{/if}}
-          &lt;- Prev
-        </a>
-      </p>
-      <p>Snapshot: {{ snapshot.current }}</p>
-      <p>
-        {{#if snapshot.next}}
-        <a href="/_/{{ snapshot.next }}">
-        {{else}}
-        <a class="no-more-page">
-        {{/if}}
-          Next -&gt;
-        </a>
-      </p>
-    </div>
+    <nav aria-label="snapshot navigation">
+      <ul class="pagination">
+{{#if snapshot.prev}}
+          <li class="page-item"><a class="page-link" href="/_/{{ snapshot.prev }}">Previous</a>
+{{else}}
+          <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
+{{/if}}
+          </li>
+          <li class="page-item active" aria-current="page">
+            <a class="page-link" href="#">Snapshot: {{ snapshot.current }}<span class="sr-only">(current)</span></a>
+          </li>
+{{#if snapshot.next}}
+          <li class="page-item"><a class="page-link" href="/_/{{ snapshot.next }}">Next</a>
+{{else}}
+          <li class="page-item disabled">
+            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Next</a>
+{{/if}}
+          </li>
+      </ul>
+    </nav>
     <p>Branch: {{ refname }} ({{#each branches}}<a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a> {{/each}})</p>
     <p>Latest commits:</p>
     <ul>
