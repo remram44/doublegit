@@ -33,9 +33,9 @@
     </nav>
     <p>Branch: {{ refname }} ({{#each branches}}<a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a> {{/each}})</p>
     <p>Latest commits:</p>
-    <ul>
-      {{#each commits}}
-      <li>{{ message }}</li>
+	<ul class="list-group">
+	{{#each commits}}
+      <li class="list-group-item">{{ message }}</li>
       {{/each}}
     </ul>
   </body>
