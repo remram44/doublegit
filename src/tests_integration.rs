@@ -307,7 +307,7 @@ fn test_update() {
     assert_eq!(
         tag_refs,
         [hash_tag2_1, hash_tag2_2]
-            .into_iter()
+            .iter()
             .map(|h| format!("tag-{}", h))
             .collect(),
     );
@@ -342,7 +342,7 @@ fn check_db(
         ",
     ).unwrap();
     let refs: Vec<_> = stmt.query_map(
-        &[&tags as &ToSql],
+        &[&tags as &dyn ToSql],
         |row| (
             row.get::<_, String>(0),
             row.get::<_, String>(1),
