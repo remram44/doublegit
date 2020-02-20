@@ -1,6 +1,9 @@
 stages:
   - test
 
+variables:
+  RUSTFLAGS: -D warnings
+
 test-1.31:
   stage: test
   image: rust:1.31
