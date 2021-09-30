@@ -16,6 +16,7 @@ jobs:
             rust-version: stable
           - os: windows-latest
             rust-version: stable
+            build_arg: "--features bundled-sqlite"
     runs-on: ${{ matrix.os }}
     env:
       RUSTFLAGS: "-D warnings"
@@ -27,6 +28,6 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
           override: true
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --verbose ${{ matrix.build_arg }}
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose ${{ matrix.build_arg }}
