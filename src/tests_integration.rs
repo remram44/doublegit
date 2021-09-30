@@ -46,10 +46,14 @@ fn test_update() {
         .arg("init")
         .current_dir(&origin)
         .status().unwrap().success());
+    assert!(process::Command::new("git")
+        .args(&["config", "--local", "core.autocrlf", "false"])
+        .status().unwrap().success());
 
     let write = |contents: &str| {
         let mut file = fs::File::create(origin.join("f")).unwrap();
         file.write_all(contents.as_bytes()).unwrap();
+        drop(file);
         assert!(process::Command::new("git")
             .args(&["add", "f"])
             .current_dir(&origin)

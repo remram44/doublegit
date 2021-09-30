@@ -32,6 +32,7 @@ tempfile = "3.0.8"
 [features]
 default = ["web"]
 web = ["handlebars", "http", "hyper", "percent-encoding", "serde", "serde_json", "warp"]
+bundled-sqlite = ["rusqlite/bundled"]
 
 [profile.release]
 opt-level = "z"

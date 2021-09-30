@@ -140,11 +140,17 @@ where
         tx.execute(
             "
             UPDATE refs SET to_date=?
-            WHERE name=?
-            ORDER BY from_date DESC
-            LIMIT 1;
+            WHERE
+                name=?
+                AND from_date=(
+                    SELECT from_date
+                    FROM refs
+                    WHERE name=?
+                    ORDER BY from_date DESC
+                    LIMIT 1
+                );
             ",
-            &[&date, &ref_.name],
+            &[&date, &ref_.name, &ref_.name],
         )?;
     }
     for ref_ in out.changed.iter().chain(out.new.iter()) {
