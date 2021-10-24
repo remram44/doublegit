@@ -1,7 +1,8 @@
 # Rust
 target
 
-# Vi
+# Editors
+.idea/
 .*.swp
 
 # Emacs

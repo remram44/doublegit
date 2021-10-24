@@ -1,43 +1,63 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Doublegit</title>
-    <style type="text/css">
-#snapshot-nav {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-around;
-}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>doublegit</title>
+
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+          crossorigin="anonymous">
+
+    <style>
+        nav div.row {
+            width: 100%;
+        }
     </style>
-  </head>
-  <body>
-    <div id="snapshot-nav">
-      <p>
-        {{#if snapshot.prev}}
-        <a href="/_/{{ snapshot.prev }}">
-        {{else}}
-        <a class="no-more-page">
-        {{/if}}
-          &lt;- Prev
-        </a>
-      </p>
-      <p>Snapshot: {{ snapshot.current }}</p>
-      <p>
-        {{#if snapshot.next}}
-        <a href="/_/{{ snapshot.next }}">
-        {{else}}
-        <a class="no-more-page">
-        {{/if}}
-          Next -&gt;
-        </a>
-      </p>
-    </div>
-    <p>Branch: {{ refname }} ({{#each branches}}<a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a> {{/each}})</p>
-    <p>Latest commits:</p>
-    <ul>
-      {{#each commits}}
-      <li>{{ message }}</li>
-      {{/each}}
-    </ul>
-  </body>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <div class="row text-center">
+                <div class="col-sm">
+                    {{#if snapshot.prev}}
+                    <a href="/_/{{ snapshot.prev }}" class="navbar-brand">
+                        &lt; Previous
+                    </a>
+                    {{/if}}
+                </div>
+                <div class="col-sm text-center">
+                    <a class="navbar-brand" href="#">doublegit</a>
+                </div>
+                <div class="col-sm text-center">
+                    {{#if snapshot.next}}
+                    <a href="/_/{{ snapshot.prev }}" class="navbar-brand">
+                        Next &gt;
+                    </a>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main role="main" class="container mt-4">
+
+
+        <h1>Snapshot: {{ snapshot.current }}</h1>
+        <p class="lead mt-2">
+            Branch: {{ refname }} (
+            {{#each branches}}
+            <a href="/_/{{ ../snapshot.req }}/{{ 0 }}">{{ 0 }}</a>
+            {{/each}} )
+        </p>
+
+        <p>Latest Commits:</p>
+        <ul>
+            {{#each commits}}
+            <li>{{ message }}</li>
+            {{/each}}
+        </ul>
+    </main>
+</body>
 </html>
